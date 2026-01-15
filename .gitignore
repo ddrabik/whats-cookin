@@ -1,2 +1,38 @@
+# Dependencies
+node_modules
+
+# Environment variables
+!.env
+.env
+.env.local
+.env.sentry-build-plugin
+
+# Build output
+/build/
+/api/
+/server/build
+/public/build
+/dist/
+/dist-ssr/
+
+# TanStack Start
+.tanstack
+app.config.timestamp_*.js
+
+# Cache & temp
+.DS_Store
+.cache
+.nitro
+.output
+
+# Vercel
+.vercel
+
+# Playwright
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
+
 # Claude Code local settings
 .claude/settings.local.json
