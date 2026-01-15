@@ -8,6 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Commands
 
+This is a fresh computer. If a task requires dependencies that are not yet installed, wait until I install them. Do not try to install yourself. Examples are node, git, python, and helpful CLI tools like gh.
+
 *To be added once build tooling is configured*
 
 ## Architecture
