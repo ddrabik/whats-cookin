@@ -1,0 +1,85 @@
+import { httpAction } from "../_generated/server";
+import { api } from "../_generated/api";
+import { validateFileUpload } from "./validation";
+
+/**
+ * HTTP Action to handle file uploads
+ * POST /upload with multipart/form-data
+ *
+ * Validates file before storing to prevent orphaned files
+ * Returns upload metadata on success, error details on failure
+ */
+export const handleUpload = httpAction(async (ctx, request) => {
+  // Parse multipart form data
+  const formData = await request.formData();
+  const file = formData.get("file") as File | null;
+  const filename = formData.get("filename") as string | null;
+
+  if (!file) {
+    return new Response(
+      JSON.stringify({ error: "No file provided" }),
+      { status: 400, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  // Use provided filename or fall back to file.name
+  const actualFilename = filename || file.name;
+
+  // Validate file BEFORE storing (atomic validation)
+  const validationResult = validateFileUpload(file, actualFilename);
+  if (!validationResult.valid) {
+    const error = validationResult.error!;
+    return new Response(
+      JSON.stringify({
+        error: error.message,
+        code: error.code,
+      }),
+      { status: 400, headers: { "Content-Type": "application/json" } },
+    );
+  }
+
+  try {
+    // Store file in Convex storage
+    const blob = await file.arrayBuffer();
+    const storageId = await ctx.storage.store(
+      new Blob([blob], { type: file.type }),
+    );
+
+    // Save metadata to database
+    const uploadId = await ctx.runMutation(api.uploads.mutations.saveFileMetadata, {
+      storageId,
+      filename: actualFilename,
+      size: file.size,
+      contentType: file.type,
+      uploadSource: request.headers.get("user-agent") || undefined,
+    });
+
+    // Get storage URL for immediate use
+    const storageUrl = await ctx.storage.getUrl(storageId);
+
+    return new Response(
+      JSON.stringify({
+        success: true,
+        uploadId,
+        storageId,
+        storageUrl,
+        filename: actualFilename,
+        size: file.size,
+        contentType: file.type,
+      }),
+      {
+        status: 201,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
+  } catch (error) {
+    console.error("Upload failed:", error);
+    return new Response(
+      JSON.stringify({
+        error: "Internal server error during upload",
+        message: error instanceof Error ? error.message : "Unknown error",
+      }),
+      { status: 500, headers: { "Content-Type": "application/json" } },
+    );
+  }
+});
