@@ -48,6 +48,9 @@ npm run lint        # Run TypeScript compiler AND ESLint (use this!)
 
 ## Git Workflow
 
-- Feature branches follow the pattern: `claude/claude-md-documentation-W0wOc`
+- Create a feature branch to contain the changes related to the feature being built.
+- Feature branches follow the pattern: `claude/{feature_description}`
 - Always develop on designated feature branches
 - Use descriptive commit messages
+- Commit often
+- Create a PR when ready to merge into main
