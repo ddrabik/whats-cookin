@@ -1,5 +1,5 @@
 import { convexTest } from "convex-test";
-import { describe, test, expect, beforeEach } from "vitest";
+import { describe, test, expect } from "vitest";
 import {
   validateFileSize,
   validateMimeType,
@@ -7,7 +7,7 @@ import {
   validateFileUpload,
   FileValidationError,
 } from "./uploads/validation";
-import { MAX_FILE_SIZE, ALLOWED_MIME_TYPES } from "./uploads/constants";
+import { MAX_FILE_SIZE } from "./uploads/constants";
 import { api } from "./_generated/api";
 import schema from "./schema";
 

@@ -1,4 +1,5 @@
 import { httpRouter } from "convex/server";
+import { httpAction } from "./_generated/server";
 import { handleUpload } from "./uploads/actions";
 
 const http = httpRouter();
@@ -21,7 +22,7 @@ http.route({
 http.route({
   path: "/upload",
   method: "OPTIONS",
-  handler: async () => {
+  handler: httpAction(async () => {
     return new Response(null, {
       status: 204,
       headers: {
@@ -30,7 +31,7 @@ http.route({
         "Access-Control-Allow-Headers": "Content-Type",
       },
     });
-  },
+  }),
 });
 
 export default http;

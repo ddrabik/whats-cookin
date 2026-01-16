@@ -29,6 +29,15 @@ npm run build       # Build for production
 npm run lint        # Run ESLint
 ```
 
+### Testing & Type Checking
+```bash
+npm test            # Run tests
+npm run test:watch  # Run tests in watch mode
+tsc --noEmit        # Check TypeScript errors
+```
+
+**IMPORTANT**: Always run `tsc --noEmit` after implementing features to catch TypeScript errors before committing.
+
 ## Architecture
 
 - **Frontend**: TanStack Start (React) with file-based routing in `src/routes/`
