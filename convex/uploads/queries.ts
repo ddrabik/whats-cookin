@@ -29,7 +29,7 @@ export const getUpload = query({
     uploadId: v.id("unauthenticatedUploads"),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.uploadId);
+    return await ctx.db.get("unauthenticatedUploads", args.uploadId);
   },
 });
 

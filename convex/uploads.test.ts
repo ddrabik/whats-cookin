@@ -1,11 +1,11 @@
 import { convexTest } from "convex-test";
-import { describe, test, expect } from "vitest";
+import { describe, expect, test } from "vitest";
 import {
-  validateFileSize,
-  validateMimeType,
-  validateFilename,
-  validateFileUpload,
   FileValidationError,
+  validateFileSize,
+  validateFileUpload,
+  validateFilename,
+  validateMimeType,
 } from "./uploads/validation";
 import { MAX_FILE_SIZE } from "./uploads/constants";
 import { api } from "./_generated/api";
@@ -255,7 +255,7 @@ describe("File Upload Mutations", () => {
           contentType: "image/jpeg",
           uploadDate: Date.now(),
         });
-        await ctx.db.delete(id);
+        await ctx.db.delete("unauthenticatedUploads", id);
         await ctx.storage.delete(storageId);
         return id;
       });

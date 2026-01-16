@@ -22,6 +22,7 @@ http.route({
 http.route({
   path: "/upload",
   method: "OPTIONS",
+  // eslint-disable-next-line @typescript-eslint/require-await
   handler: httpAction(async () => {
     return new Response(null, {
       status: 204,

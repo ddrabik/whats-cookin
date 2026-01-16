@@ -76,10 +76,10 @@ function UploadPage() {
       setSelectedFile(null);
 
       // Reset file input
-      const fileInput = document.getElementById(
-        "file-input",
-      ) as HTMLInputElement;
-      if (fileInput) fileInput.value = "";
+      const fileInput = document.getElementById("file-input");
+      if (fileInput instanceof HTMLInputElement) {
+        fileInput.value = "";
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Upload failed");
     } finally {

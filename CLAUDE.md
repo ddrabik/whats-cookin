@@ -33,10 +33,10 @@ npm run lint        # Run ESLint
 ```bash
 npm test            # Run tests
 npm run test:watch  # Run tests in watch mode
-tsc --noEmit        # Check TypeScript errors
+npm run lint        # Run TypeScript compiler AND ESLint (use this!)
 ```
 
-**IMPORTANT**: Always run `tsc --noEmit` after implementing features to catch TypeScript errors before committing.
+**IMPORTANT**: Always run `npm run lint` after implementing features to catch both TypeScript and ESLint errors before committing. This command runs both `tsc` (TypeScript compiler) and `eslint` (code quality checks including Convex-specific rules).
 
 ## Architecture
 

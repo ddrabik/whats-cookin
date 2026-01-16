@@ -35,7 +35,7 @@ export const deleteUpload = mutation({
     uploadId: v.id("unauthenticatedUploads"),
   },
   handler: async (ctx, args) => {
-    const upload = await ctx.db.get(args.uploadId);
+    const upload = await ctx.db.get("unauthenticatedUploads", args.uploadId);
     if (!upload) {
       throw new Error("Upload not found");
     }
@@ -44,7 +44,7 @@ export const deleteUpload = mutation({
     await ctx.storage.delete(upload.storageId);
 
     // Delete metadata
-    await ctx.db.delete(args.uploadId);
+    await ctx.db.delete("unauthenticatedUploads", args.uploadId);
 
     return { success: true };
   },
