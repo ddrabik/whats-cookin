@@ -51,9 +51,11 @@ function UploadPage() {
     setSuccess(null);
 
     try {
-      // Get Convex deployment URL from environment
-      const convexUrl = (import.meta as any).env.VITE_CONVEX_URL;
-      const uploadUrl = `${convexUrl}/upload`;
+      // Get Convex site URL for HTTP actions
+      // HTTP actions use .convex.site, not .convex.cloud (which is for WebSocket)
+      const convexUrl = (import.meta as any).env.VITE_CONVEX_URL as string;
+      const siteUrl = convexUrl.replace('.convex.cloud', '.convex.site');
+      const uploadUrl = `${siteUrl}/upload`;
 
       // Create FormData
       const formData = new FormData();
