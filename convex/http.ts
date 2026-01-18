@@ -1,8 +1,8 @@
-import { httpRouter } from "convex/server";
-import { httpAction } from "./_generated/server";
-import { handleUpload } from "./uploads/actions";
+import { httpRouter } from 'convex/server'
+import { httpAction } from './_generated/server'
+import { handleUpload } from './uploads/actions'
 
-const http = httpRouter();
+const http = httpRouter()
 
 /**
  * File upload endpoint
@@ -10,29 +10,30 @@ const http = httpRouter();
  * Accepts: file (File), filename (optional string)
  */
 http.route({
-  path: "/upload",
-  method: "POST",
+  path: '/upload',
+  method: 'POST',
   handler: handleUpload,
-});
+})
 
 /**
  * CORS preflight handler for upload endpoint
  * Allows cross-origin uploads from frontend
  */
 http.route({
-  path: "/upload",
-  method: "OPTIONS",
+  path: '/upload',
+  method: 'OPTIONS',
   // eslint-disable-next-line @typescript-eslint/require-await
   handler: httpAction(async () => {
     return new Response(null, {
       status: 204,
       headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
+        'Access-Control-Allow-Origin': 'http://localhost:3000',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Digest',
+        'Access-Control-Max-Age': '86400',
       },
-    });
+    })
   }),
-});
+})
 
-export default http;
+export default http
