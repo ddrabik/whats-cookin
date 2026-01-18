@@ -20,7 +20,6 @@ export const handleUpload = httpAction(async (ctx, request) => {
   const formData = await request.formData()
   const file = formData.get('file') as File | null
   const filename = formData.get('filename') as string | null
-  console.log('here')
 
   if (!file) {
     return new Response(JSON.stringify({ error: 'No file provided' }), {
