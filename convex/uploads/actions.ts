@@ -1,6 +1,7 @@
 import { httpAction } from '../_generated/server'
 import { api } from '../_generated/api'
 import { validateFileUpload } from './validation'
+import type { Id } from '../_generated/dataModel'
 
 // CORS headers for cross-origin requests from frontend
 const corsHeaders = {
@@ -66,6 +67,18 @@ export const handleUpload = httpAction(async (ctx, request) => {
     // Get storage URL for immediate use
     const storageUrl = await ctx.storage.getUrl(storageId)
 
+    // Trigger async vision analysis for the uploaded file
+    let analysisId: Id<"visionAnalysis"> | null = null
+    try {
+      analysisId = await ctx.runMutation(
+        api.vision.mutations.triggerAnalysis,
+        { uploadId }
+      )
+    } catch (analysisError) {
+      // Log but don't fail the upload if vision analysis fails to start
+      console.error('Failed to trigger vision analysis:', analysisError)
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
@@ -75,6 +88,7 @@ export const handleUpload = httpAction(async (ctx, request) => {
         filename: actualFilename,
         size: file.size,
         contentType: file.type,
+        analysisId, // Include analysis ID if available
       }),
       {
         status: 201,

@@ -15,6 +15,10 @@ import type * as uploads_constants from "../uploads/constants.js";
 import type * as uploads_mutations from "../uploads/mutations.js";
 import type * as uploads_queries from "../uploads/queries.js";
 import type * as uploads_validation from "../uploads/validation.js";
+import type * as vision_actions from "../vision/actions.js";
+import type * as vision_constants from "../vision/constants.js";
+import type * as vision_mutations from "../vision/mutations.js";
+import type * as vision_queries from "../vision/queries.js";
 
 import type {
   ApiFromModules,
@@ -30,6 +34,10 @@ declare const fullApi: ApiFromModules<{
   "uploads/mutations": typeof uploads_mutations;
   "uploads/queries": typeof uploads_queries;
   "uploads/validation": typeof uploads_validation;
+  "vision/actions": typeof vision_actions;
+  "vision/constants": typeof vision_constants;
+  "vision/mutations": typeof vision_mutations;
+  "vision/queries": typeof vision_queries;
 }>;
 
 /**

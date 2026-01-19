@@ -62,11 +62,6 @@ describe("File Upload Validation", () => {
       expect(result.valid).toBe(true);
     });
 
-    test("accepts application/pdf", () => {
-      const result = validateMimeType("application/pdf");
-      expect(result.valid).toBe(true);
-    });
-
     test("rejects image/gif", () => {
       const result = validateMimeType("image/gif");
       expect(result.valid).toBe(false);

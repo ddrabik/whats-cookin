@@ -11,7 +11,6 @@ export const ALLOWED_MIME_TYPES = [
   "image/png",
   "image/heic",
   "image/webp",
-  "application/pdf",
 ] as const;
 
 /** Allowed file extensions for recipe uploads */
@@ -21,7 +20,6 @@ export const ALLOWED_EXTENSIONS = [
   ".png",
   ".heic",
   ".webp",
-  ".pdf",
 ] as const;
 
 /** Type for allowed MIME types */
