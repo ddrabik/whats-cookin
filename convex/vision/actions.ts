@@ -57,13 +57,15 @@ export const analyzeUpload = internalAction({
       }
 
       // Initialize OpenAI client
-      const openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
-      });
-
+      // Validate API key before initializing client
       if (!process.env.OPENAI_API_KEY) {
         throw createError(ERROR_CODES.API_KEY_INVALID, "OPENAI_API_KEY not configured", false);
       }
+
+      // Initialize OpenAI client
+      const openai = new OpenAI({
+        apiKey: process.env.OPENAI_API_KEY,
+      });
 
       // Analyze based on content type
       let result: AnalysisResult;
