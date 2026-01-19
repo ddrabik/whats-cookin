@@ -71,8 +71,6 @@ export const analyzeUpload = internalAction({
       let result: AnalysisResult;
       if (args.contentType.startsWith("image/")) {
         result = await analyzeImage(openai, storageUrl);
-      } else if (args.contentType === "application/pdf") {
-        result = await analyzePdf(openai, storageUrl);
       } else {
         throw createError(
           ERROR_CODES.INVALID_FORMAT,
@@ -139,40 +137,6 @@ async function analyzeImage(openai: OpenAI, imageUrl: string): Promise<AnalysisR
   }
 
   return parseAnalysisResponse(content);
-}
-
-/**
- * Analyze a PDF using OpenAI Responses API with file input
- */
-async function analyzePdf(openai: OpenAI, pdfUrl: string): Promise<AnalysisResult> {
-  // For PDFs, we use the responses API with file_url
-  // Note: This uses the newer Responses API format
-  const response = await openai.responses.create({
-    model: OPENAI_MODEL,
-    input: [
-      {
-        role: "user",
-        content: [
-          { type: "input_text", text: RECIPE_ANALYSIS_PROMPT },
-          { type: "input_file", file_url: pdfUrl },
-        ],
-      },
-    ],
-  });
-
-  // Extract text from the response
-  const outputText = response.output
-    .filter((item): item is OpenAI.Responses.ResponseOutputMessage => item.type === "message")
-    .flatMap((msg) => msg.content)
-    .filter((content): content is OpenAI.Responses.ResponseOutputText => content.type === "output_text")
-    .map((content) => content.text)
-    .join("");
-
-  if (!outputText) {
-    throw createError(ERROR_CODES.PARSE_ERROR, "No content in OpenAI response", true);
-  }
-
-  return parseAnalysisResponse(outputText);
 }
 
 /**

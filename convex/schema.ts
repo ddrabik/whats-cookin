@@ -18,7 +18,7 @@ export default defineSchema({
     filename: v.string(),
     // File size in bytes
     size: v.number(),
-    // MIME type (e.g., image/jpeg, application/pdf)
+    // MIME type (e.g., image/jpeg, image/png)
     contentType: v.string(),
     // Upload timestamp
     uploadDate: v.number(),

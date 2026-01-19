@@ -18,14 +18,14 @@ export const MAX_TOKENS = 4096;
 export const RECIPE_CONFIDENCE_THRESHOLD = 0.7;
 
 /**
- * Prompt for recipe extraction from images/PDFs
+ * Prompt for recipe extraction from images
  * This prompt guides OpenAI to extract structured recipe data
  */
-export const RECIPE_ANALYSIS_PROMPT = `You are a recipe extraction assistant. Analyze this image/document and extract recipe information.
+export const RECIPE_ANALYSIS_PROMPT = `You are a recipe extraction assistant. Analyze this image and extract recipe information.
 
 Your response MUST be valid JSON with this exact structure:
 {
-  "rawText": "Full text content visible in the image/document, preserving line breaks",
+  "rawText": "Full text content visible in the image, preserving line breaks",
   "description": "Brief 1-2 sentence description of what the image contains",
   "confidence": 0.0 to 1.0 (how confident you are this is a recipe with parseable data),
   "contentType": "recipe" | "ingredient_list" | "other",
