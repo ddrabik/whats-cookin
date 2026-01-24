@@ -10,12 +10,18 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as UploadRouteImport } from './routes/upload'
+import { Route as CookbookRouteImport } from './routes/cookbook'
 import { Route as AnotherPageRouteImport } from './routes/anotherPage'
 import { Route as IndexRouteImport } from './routes/index'
 
 const UploadRoute = UploadRouteImport.update({
   id: '/upload',
   path: '/upload',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CookbookRoute = CookbookRouteImport.update({
+  id: '/cookbook',
+  path: '/cookbook',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AnotherPageRoute = AnotherPageRouteImport.update({
@@ -32,30 +38,34 @@ const IndexRoute = IndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/anotherPage': typeof AnotherPageRoute
+  '/cookbook': typeof CookbookRoute
   '/upload': typeof UploadRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/anotherPage': typeof AnotherPageRoute
+  '/cookbook': typeof CookbookRoute
   '/upload': typeof UploadRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/anotherPage': typeof AnotherPageRoute
+  '/cookbook': typeof CookbookRoute
   '/upload': typeof UploadRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/anotherPage' | '/upload'
+  fullPaths: '/' | '/anotherPage' | '/cookbook' | '/upload'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/anotherPage' | '/upload'
-  id: '__root__' | '/' | '/anotherPage' | '/upload'
+  to: '/' | '/anotherPage' | '/cookbook' | '/upload'
+  id: '__root__' | '/' | '/anotherPage' | '/cookbook' | '/upload'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AnotherPageRoute: typeof AnotherPageRoute
+  CookbookRoute: typeof CookbookRoute
   UploadRoute: typeof UploadRoute
 }
 
@@ -66,6 +76,13 @@ declare module '@tanstack/react-router' {
       path: '/upload'
       fullPath: '/upload'
       preLoaderRoute: typeof UploadRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/cookbook': {
+      id: '/cookbook'
+      path: '/cookbook'
+      fullPath: '/cookbook'
+      preLoaderRoute: typeof CookbookRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/anotherPage': {
@@ -88,6 +105,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AnotherPageRoute: AnotherPageRoute,
+  CookbookRoute: CookbookRoute,
   UploadRoute: UploadRoute,
 }
 export const routeTree = rootRouteImport
