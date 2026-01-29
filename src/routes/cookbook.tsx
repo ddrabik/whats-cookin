@@ -158,8 +158,8 @@ function CookbookPage() {
   return (
     <main className="min-h-screen bg-background">
       <div className="flex flex-col lg:flex-row min-h-screen">
-        {/* Sidebar */}
-        <aside className="w-full lg:w-56 border-b lg:border-b-0 lg:border-r border-border bg-muted/30 p-4">
+        {/* Sidebar - Hidden on mobile/tablet, shown on desktop */}
+        <aside className="hidden lg:block lg:w-56 lg:border-r border-border bg-muted/30 p-4">
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-lg font-semibold">Cookbook</h1>
             <Button size="sm" className="h-8">
