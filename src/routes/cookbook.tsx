@@ -220,11 +220,28 @@ function CookbookPage() {
         <div className="flex-1 flex flex-col">
           {/* Filter Bar */}
           <div className="px-6 py-4 border-b border-border">
-            <div className="flex items-center gap-3 flex-wrap">
+            <div className="flex items-center gap-3 flex-wrap justify-end">
+              <span className="text-sm font-medium text-muted-foreground">Filter by:</span>
               {(["breakfast", "lunch", "dinner", "dessert"] as Array<MealTypeFilter>).map((cat) => {
                 const item = categoryItems.find(i => i.key === cat);
                 if (!item) return null;
                 const isSelected = categoryFilter === cat;
+
+                const categoryColors: Record<string, string> = {
+                  breakfast: isSelected
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-900/70",
+                  lunch: isSelected
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/70",
+                  dinner: isSelected
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 hover:bg-purple-200 dark:hover:bg-purple-900/70",
+                  dessert: isSelected
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-pink-100 text-pink-700 dark:bg-pink-900/50 dark:text-pink-300 hover:bg-pink-200 dark:hover:bg-pink-900/70",
+                };
+
                 return (
                   <button
                     key={cat}
@@ -235,11 +252,7 @@ function CookbookPage() {
                         setCategoryFilter(cat);
                       }
                     }}
-                    className={`flex items-center gap-1 px-3 py-1 text-sm rounded-full transition-colors ${
-                      isSelected
-                        ? "bg-primary text-primary-foreground"
-                        : "bg-muted text-muted-foreground hover:bg-muted hover:text-foreground"
-                    }`}
+                    className={`flex items-center gap-1 px-3 py-1 text-sm rounded-full transition-colors ${categoryColors[cat]}`}
                   >
                     {item.icon}
                     <span>{item.label}</span>
