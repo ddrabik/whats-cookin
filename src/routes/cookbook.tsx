@@ -144,116 +144,108 @@ function CookbookPage() {
 
           {/* Category Navigation */}
           <nav className="space-y-1">
-            {categoryItems.map((item) => (
+            {/* All Recipes */}
+            {categoryItems.slice(0, 1).map((item) => (
               <button
                 key={item.key}
-                onClick={() => setCategoryFilter(item.key)}
-                className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-md transition-colors ${
-                  categoryFilter === item.key
+                onClick={() => {
+                  setCategoryFilter(item.key);
+                  setFavoritesOnly(false);
+                }}
+                className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-md transition-colors cursor-pointer ${
+                  !favoritesOnly
                     ? "bg-primary text-primary-foreground"
-                    : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                    : "hover:bg-muted text-foreground"
                 }`}
               >
                 <span className="flex items-center gap-2">
                   {item.icon}
                   {item.label}
                 </span>
-                <span className={`text-xs ${categoryFilter === item.key ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                <span className={`text-xs ${!favoritesOnly ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
                   {item.count}
                 </span>
               </button>
             ))}
+
+            {/* Favorites Filter */}
+            <button
+              onClick={() => {
+                setFavoritesOnly(!favoritesOnly);
+                if (!favoritesOnly) {
+                  setCategoryFilter("all");
+                }
+              }}
+              className={`w-full flex items-center justify-between px-3 py-2 text-sm rounded-md transition-colors cursor-pointer ${
+                favoritesOnly
+                  ? "bg-primary text-primary-foreground"
+                  : "hover:bg-muted text-foreground"
+              }`}
+            >
+              <span className="flex items-center gap-2">
+                <Star className={`h-4 w-4 ${favoritesOnly ? "fill-current" : ""}`} />
+                Favorites
+              </span>
+              <span className={`text-xs ${favoritesOnly ? "text-primary-foreground/70" : "text-muted-foreground"}`}>
+                {stats.favorites}
+              </span>
+            </button>
+
           </nav>
+
+          {/* Recently Used Section */}
+          <div className="mt-6 pt-6 border-t border-border">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-3 mb-3">Recently Used</h3>
+            <div className="space-y-1">
+              {recentRecipes.map((recipe) => (
+                <button
+                  key={recipe.id}
+                  className="w-full flex items-center gap-2 px-3 py-2 rounded-md hover:bg-muted transition-colors group text-left"
+                  onClick={() => setSelectedRecipe(recipe)}
+                >
+                  <Avatar className="h-6 w-6 flex-shrink-0">
+                    <AvatarImage src={recipe.imageUrl} alt={recipe.title} />
+                    <AvatarFallback>{recipe.title[0]}</AvatarFallback>
+                  </Avatar>
+                  <span className="text-sm text-muted-foreground group-hover:text-foreground truncate">
+                    {recipe.title}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </div>
         </aside>
 
         {/* Main Content */}
         <div className="flex-1 flex flex-col">
-          {/* Recent Strip */}
-          <div className="border-b border-border bg-muted/20 px-6 py-3">
-            <div className="flex items-center gap-4">
-              <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Recent</span>
-              <div className="flex items-center gap-2">
-                {recentRecipes.map((recipe) => (
-                  <button
-                    key={recipe.id}
-                    className="flex items-center gap-2 px-2 py-1 rounded-md hover:bg-muted transition-colors group"
-                    onClick={() => setSelectedRecipe(recipe)}
-                  >
-                    <Avatar className="h-6 w-6">
-                      <AvatarImage src={recipe.imageUrl} alt={recipe.title} />
-                      <AvatarFallback>{recipe.title[0]}</AvatarFallback>
-                    </Avatar>
-                    <span className="text-sm text-muted-foreground group-hover:text-foreground truncate max-w-24">
-                      {recipe.title}
-                    </span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
           {/* Filter Bar */}
-          <div className="px-6 py-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <h2 className="font-medium">
-                {categoryFilter === "all" ? "All Recipes" : categoryFilter.charAt(0).toUpperCase() + categoryFilter.slice(1)}
-              </h2>
-              <Badge variant="secondary">{filteredAndSortedRecipes.length}</Badge>
-            </div>
-
-            {/* Filters & Sort */}
-            <div className="flex items-center gap-2 flex-wrap">
-              {/* Category Filter Pills */}
-              <div className="flex items-center gap-1">
-                {(["all", "breakfast", "lunch", "dinner", "dessert"] as Array<MealTypeFilter>).map((cat) => (
-                  <Toggle
+          <div className="px-6 py-4 border-b border-border">
+            <div className="flex items-center gap-3 flex-wrap">
+              {(["breakfast", "lunch", "dinner", "dessert"] as Array<MealTypeFilter>).map((cat) => {
+                const item = categoryItems.find(i => i.key === cat);
+                if (!item) return null;
+                const isSelected = categoryFilter === cat;
+                return (
+                  <button
                     key={cat}
-                    size="sm"
-                    pressed={categoryFilter === cat}
-                    onPressedChange={() => setCategoryFilter(cat)}
-                    className="h-8 px-3 text-xs data-[state=on]:bg-primary data-[state=on]:text-primary-foreground"
+                    onClick={() => {
+                      if (isSelected) {
+                        setCategoryFilter("all");
+                      } else {
+                        setCategoryFilter(cat);
+                      }
+                    }}
+                    className={`flex items-center gap-1 px-3 py-1 text-sm rounded-full transition-colors ${
+                      isSelected
+                        ? "bg-primary text-primary-foreground"
+                        : "bg-muted text-muted-foreground hover:bg-muted hover:text-foreground"
+                    }`}
                   >
-                    {cat === "all" ? "All" : cat.charAt(0).toUpperCase() + cat.slice(1)}
-                  </Toggle>
-                ))}
-              </div>
-
-              <div className="w-px h-6 bg-border" />
-
-              {/* Favorites Toggle */}
-              <Toggle
-                size="sm"
-                pressed={favoritesOnly}
-                onPressedChange={setFavoritesOnly}
-                className="h-8 px-3 text-xs data-[state=on]:bg-red-100 data-[state=on]:text-red-700 dark:data-[state=on]:bg-red-900 dark:data-[state=on]:text-red-300"
-              >
-                <Star className={`h-3 w-3 mr-1 ${favoritesOnly ? "fill-current" : ""}`} />
-                Favorites
-              </Toggle>
-
-              <div className="w-px h-6 bg-border" />
-
-              {/* Sort Dropdown */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="h-8">
-                    <ArrowUpDown className="h-3 w-3 mr-1" />
-                    Sort
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={() => handleSort("createdAt")}>
-                    <Calendar className="h-4 w-4 mr-2" />
-                    Date Added
-                    {sortField === "createdAt" && (sortDirection === "asc" ? " ↑" : " ↓")}
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => handleSort("cookTime")}>
-                    <Clock className="h-4 w-4 mr-2" />
-                    Cook Time
-                    {sortField === "cookTime" && (sortDirection === "asc" ? " ↑" : " ↓")}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+                    {item.icon}
+                    <span>{item.label}</span>
+                  </button>
+                );
+              })}
             </div>
           </div>
 
