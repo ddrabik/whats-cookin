@@ -1,31 +1,32 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
-  Heart,
-  Clock,
-  MoreHorizontal,
-  Trash2,
-  Plus,
-  Sunrise,
-  Sun,
-  Moon,
-  Coffee,
-  Cake,
-  Star,
-  Filter,
-  ArrowUpDown,
-  ArrowUp,
   ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  Cake,
   Calendar,
-  X,
+  Clock,
+  Coffee,
+  Filter,
+  Heart,
+  Moon,
+  MoreHorizontal,
+  Plus,
+  Search,
+  Star,
+  Sun,
+  Sunrise,
+  Trash2,
   User,
+  X,
 } from "lucide-react";
 import type { MealTypeFilter, Recipe } from "~/data/mockRecipes";
+import type { FuseResultMatch } from "fuse.js";
 import { mockRecipes, recentRecipes } from "~/data/mockRecipes";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
-import { Toggle } from "~/components/ui/toggle";
 import {
   Table,
   TableBody,
@@ -46,6 +47,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
+import { Input } from "~/components/ui/input";
+import { HighlightedText, createRecipeSearch } from "~/lib/searchUtils";
+import { useDebounce } from "~/hooks/useDebounce";
 
 export const Route = createFileRoute("/cookbook")({
   component: CookbookPage,
@@ -61,14 +65,36 @@ function CookbookPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [recipes, setRecipes] = useState<Array<Recipe>>(mockRecipes);
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const debouncedSearchQuery = useDebounce(searchQuery, 100);
+
+  const fuse = useMemo(() => createRecipeSearch(recipes), [recipes]);
 
   const filteredAndSortedRecipes = useMemo(() => {
-    let result = recipes.filter((recipe) => {
+    let result = recipes;
+    const searchResults: Map<string, ReadonlyArray<FuseResultMatch>> = new Map();
+
+    // Apply search if query exists
+    if (debouncedSearchQuery.trim()) {
+      const fuseResults = fuse.search(debouncedSearchQuery);
+      result = fuseResults.map(r => r.item);
+
+      // Store match metadata for highlighting
+      fuseResults.forEach(r => {
+        if (r.matches) {
+          searchResults.set(r.item.id, r.matches);
+        }
+      });
+    }
+
+    // Apply filters
+    result = result.filter((recipe) => {
       if (favoritesOnly && !recipe.isFavorite) return false;
       if (categoryFilter === "all") return true;
       return recipe.mealType === categoryFilter;
     });
 
+    // Apply sorting
     result.sort((a, b) => {
       let comparison = 0;
       if (sortField === "createdAt") {
@@ -79,8 +105,8 @@ function CookbookPage() {
       return sortDirection === "asc" ? comparison : -comparison;
     });
 
-    return result;
-  }, [recipes, categoryFilter, favoritesOnly, sortField, sortDirection]);
+    return { recipes: result, searchResults };
+  }, [recipes, debouncedSearchQuery, categoryFilter, favoritesOnly, sortField, sortDirection, fuse]);
 
   const toggleFavorite = (id: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -93,10 +119,10 @@ function CookbookPage() {
   };
 
   const handleSort = (field: SortField) => {
+    setSortField(field);
     if (sortField === field) {
       setSortDirection((prev) => (prev === "asc" ? "desc" : "asc"));
     } else {
-      setSortField(field);
       setSortDirection("desc");
     }
   };
@@ -220,9 +246,31 @@ function CookbookPage() {
         <div className="flex-1 flex flex-col">
           {/* Filter Bar */}
           <div className="px-6 py-4 border-b border-border">
-            <div className="flex items-center gap-3 flex-wrap justify-end">
-              <span className="text-sm font-medium text-muted-foreground">Filter by:</span>
-              {(["breakfast", "lunch", "dinner", "dessert"] as Array<MealTypeFilter>).map((cat) => {
+            <div className="flex items-center gap-4 flex-wrap justify-between">
+              {/* Search Input - Left Side */}
+              <div className="relative w-full lg:w-80">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Search recipes, ingredients..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 pr-9"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+
+              {/* Category Filters - Right Side (hidden on mobile) */}
+              <div className="hidden lg:flex items-center gap-3 flex-wrap">
+                <span className="text-sm font-medium text-muted-foreground">Filter by:</span>
+                {(["breakfast", "lunch", "dinner", "dessert"] as Array<MealTypeFilter>).map((cat) => {
                 const item = categoryItems.find(i => i.key === cat);
                 if (!item) return null;
                 const isSelected = categoryFilter === cat;
@@ -259,6 +307,7 @@ function CookbookPage() {
                   </button>
                 );
               })}
+              </div>
             </div>
           </div>
 
@@ -293,10 +342,12 @@ function CookbookPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredAndSortedRecipes.map((recipe) => (
+                {filteredAndSortedRecipes.recipes.map((recipe) => (
                   <RecipeTableRow
                     key={recipe.id}
                     recipe={recipe}
+                    searchMatches={filteredAndSortedRecipes.searchResults.get(recipe.id)}
+                    searchQuery={debouncedSearchQuery}
                     onToggleFavorite={toggleFavorite}
                     onRowClick={() => setSelectedRecipe(recipe)}
                     formatDate={formatDate}
@@ -406,13 +457,72 @@ function CategoryBadge({ mealType }: { mealType: Recipe["mealType"] }) {
   );
 }
 
+function SearchMatchContext({
+  recipe,
+  matches,
+}: {
+  recipe: Recipe;
+  matches: ReadonlyArray<FuseResultMatch>;
+}) {
+  // Find best match (prioritize title > ingredients > category)
+  const titleMatch = matches.find(m => m.key === 'title');
+  const ingredientMatch = matches.find(m => m.key === 'ingredients.name');
+  const categoryMatch = matches.find(m => m.key === 'mealType');
+
+  const bestMatch = titleMatch || ingredientMatch || categoryMatch;
+
+  if (!bestMatch?.indices) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        {recipe.author || recipe.source}
+      </p>
+    );
+  }
+
+  if (bestMatch.key === 'title') {
+    return (
+      <p className="text-xs text-muted-foreground">
+        <HighlightedText text={recipe.title} indices={bestMatch.indices} />
+      </p>
+    );
+  }
+
+  if (bestMatch.key === 'ingredients.name') {
+    const ingredientIndex = typeof bestMatch.refIndex === 'number' ? bestMatch.refIndex : parseInt(String(bestMatch.refIndex ?? '0'));
+    const ingredient = recipe.ingredients[ingredientIndex];
+    return (
+      <p className="text-xs text-muted-foreground">
+        Ingredient: <HighlightedText text={ingredient.name} indices={bestMatch.indices} />
+      </p>
+    );
+  }
+
+  if (bestMatch.key === 'mealType') {
+    return (
+      <p className="text-xs text-muted-foreground">
+        Category: <HighlightedText text={recipe.mealType} indices={bestMatch.indices} />
+      </p>
+    );
+  }
+
+  return (
+    <p className="text-xs text-muted-foreground">
+      {recipe.author || recipe.source}
+    </p>
+  );
+}
+
 function RecipeTableRow({
   recipe,
+  searchMatches,
+  searchQuery,
   onToggleFavorite,
   onRowClick,
   formatDate,
 }: {
   recipe: Recipe;
+  searchMatches?: ReadonlyArray<FuseResultMatch>;
+  searchQuery?: string;
   onToggleFavorite: (id: string, e?: React.MouseEvent) => void;
   onRowClick: () => void;
   formatDate: (date: Date) => string;
@@ -431,7 +541,13 @@ function RecipeTableRow({
       <TableCell>
         <div>
           <p className="font-medium">{recipe.title}</p>
-          <p className="text-xs text-muted-foreground">{recipe.author || recipe.source}</p>
+          {searchQuery && searchMatches ? (
+            <SearchMatchContext recipe={recipe} matches={searchMatches} />
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              {recipe.author || recipe.source}
+            </p>
+          )}
         </div>
       </TableCell>
       <TableCell>
@@ -463,10 +579,11 @@ function RecipeTableRow({
       </TableCell>
       <TableCell>
         <DropdownMenu>
-          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
+          <DropdownMenuTrigger
+            className="inline-flex items-center justify-center rounded-md hover:bg-accent hover:text-accent-foreground h-8 w-8 transition-colors"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <MoreHorizontal className="h-4 w-4" />
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuItem className="text-destructive">
