@@ -29,6 +29,48 @@ export default defineSchema({
     .index("by_uploadDate", ["uploadDate"])
     .index("by_contentType", ["contentType"]),
 
+  // Recipes table
+  recipes: defineTable({
+    // Basic recipe info
+    title: v.string(),
+    mealType: v.union(
+      v.literal("breakfast"),
+      v.literal("lunch"),
+      v.literal("dinner"),
+      v.literal("snack"),
+      v.literal("dessert")
+    ),
+    cookTime: v.string(), // Human-readable format like "25 min"
+    cookTimeMinutes: v.number(), // For sorting/filtering
+    isFavorite: v.boolean(),
+
+    // Attribution (at least one should be present)
+    author: v.optional(v.string()),
+    source: v.optional(v.string()),
+
+    // Image
+    imageUrl: v.string(),
+
+    // Timestamps
+    createdAt: v.number(), // Unix timestamp in milliseconds
+
+    // Ingredients array
+    ingredients: v.array(
+      v.object({
+        quantity: v.number(),
+        name: v.string(),
+        unit: v.string(),
+      })
+    ),
+
+    // Cooking instructions (optional, step-by-step)
+    instructions: v.optional(v.array(v.string())),
+  })
+    .index("by_mealType", ["mealType"])
+    .index("by_createdAt", ["createdAt"])
+    .index("by_cookTimeMinutes", ["cookTimeMinutes"])
+    .index("by_isFavorite", ["isFavorite"]),
+
   // Vision analysis results for uploaded files
   visionAnalysis: defineTable({
     // Reference to the upload that was analyzed
@@ -72,6 +114,9 @@ export default defineSchema({
         retryable: v.boolean(),
       })
     ),
+    // Recipe pipeline tracking
+    recipeId: v.optional(v.id("recipes")), // Set when converted to recipe
+    recipeCreatedAt: v.optional(v.number()), // When recipe was created
     // Retry tracking
     retryCount: v.number(),
     maxRetries: v.number(),
@@ -81,5 +126,6 @@ export default defineSchema({
     completedAt: v.optional(v.number()),
   })
     .index("by_uploadId", ["uploadId"])
-    .index("by_status", ["status"]),
+    .index("by_status", ["status"])
+    .index("by_recipeId", ["recipeId"]),
 });

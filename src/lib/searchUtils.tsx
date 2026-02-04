@@ -1,5 +1,5 @@
 import Fuse from 'fuse.js';
-import type { Recipe } from '~/data/mockRecipes';
+import type { Recipe } from '~/types/recipe';
 
 export const createRecipeSearch = (recipes: Array<Recipe>) => {
   return new Fuse(recipes, {

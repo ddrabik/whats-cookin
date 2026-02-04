@@ -74,6 +74,7 @@ export const markProcessing = internalMutation({
 /**
  * Internal mutation to save successful analysis results
  * Called by the action after OpenAI returns results
+ * Automatically triggers recipe creation for high-confidence analyses
  */
 export const saveResult = internalMutation({
   args: {
@@ -103,6 +104,14 @@ export const saveResult = internalMutation({
       updatedAt: now,
       completedAt: now,
     });
+
+    // Trigger recipe creation pipeline for high-confidence analyses
+    // This runs asynchronously so analysis completion isn't blocked
+    await ctx.scheduler.runAfter(
+      0,
+      internal.recipePipeline.processCompletedAnalysis,
+      { analysisId: args.analysisId }
+    );
   },
 });
 

@@ -10,6 +10,8 @@
 
 import type * as http from "../http.js";
 import type * as myFunctions from "../myFunctions.js";
+import type * as recipePipeline from "../recipePipeline.js";
+import type * as recipes from "../recipes.js";
 import type * as uploads_actions from "../uploads/actions.js";
 import type * as uploads_constants from "../uploads/constants.js";
 import type * as uploads_mutations from "../uploads/mutations.js";
@@ -29,6 +31,8 @@ import type {
 declare const fullApi: ApiFromModules<{
   http: typeof http;
   myFunctions: typeof myFunctions;
+  recipePipeline: typeof recipePipeline;
+  recipes: typeof recipes;
   "uploads/actions": typeof uploads_actions;
   "uploads/constants": typeof uploads_constants;
   "uploads/mutations": typeof uploads_mutations;
