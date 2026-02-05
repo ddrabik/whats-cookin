@@ -101,7 +101,7 @@ function UploadPage() {
           <input
             id="file-input"
             type="file"
-            accept=".jpg,.jpeg,.png,.heic,.webp"
+            accept=".jpg,.jpeg,.png,.webp,.gif"
             onChange={handleFileSelect}
             disabled={uploading}
             className="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 focus:outline-none"
@@ -138,7 +138,7 @@ function UploadPage() {
         )}
 
         <div className="text-xs text-gray-500">
-          Accepted formats: JPG, PNG, HEIC, WebP (max 10MB)
+          Accepted formats: JPG, PNG, WebP, GIF (max 10MB)
         </div>
       </div>
 

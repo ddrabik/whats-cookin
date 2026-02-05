@@ -84,3 +84,57 @@ export const getUploadWithAnalysis = query({
     };
   },
 });
+
+/**
+ * Gets all pending recipe analyses for displaying placeholders
+ * Returns analyses that are pending or processing and haven't been converted to recipes yet
+ */
+export const getPendingRecipes = query({
+  args: {},
+  handler: async (ctx) => {
+    // Get all pending and processing analyses
+    const pendingAnalyses = await ctx.db
+      .query("visionAnalysis")
+      .filter((q) =>
+        q.or(
+          q.eq(q.field("status"), "pending"),
+          q.eq(q.field("status"), "processing")
+        )
+      )
+      .order("desc")
+      .collect();
+
+    // Get completed analyses that don't have a recipe yet
+    const completedWithoutRecipe = await ctx.db
+      .query("visionAnalysis")
+      .withIndex("by_status", (q) => q.eq("status", "completed"))
+      .filter((q) => q.eq(q.field("recipeId"), undefined))
+      .order("desc")
+      .take(10);
+
+    const allPending = [...pendingAnalyses, ...completedWithoutRecipe];
+
+    // Fetch upload details and storage URLs for each
+    const pendingWithDetails = await Promise.all(
+      allPending.map(async (analysis) => {
+        const upload = await ctx.db.get("unauthenticatedUploads", analysis.uploadId);
+        if (!upload) return null;
+
+        const storageUrl = await ctx.storage.getUrl(upload.storageId);
+
+        return {
+          analysisId: analysis._id,
+          uploadId: analysis.uploadId,
+          status: analysis.status,
+          filename: upload.filename,
+          imageUrl: storageUrl,
+          uploadDate: upload.uploadDate,
+          // Extract title from analysis if available
+          title: analysis.analysisResult?.recipeData?.title,
+        };
+      })
+    );
+
+    return pendingWithDetails.filter((item) => item !== null);
+  },
+});

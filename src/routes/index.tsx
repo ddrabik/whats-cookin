@@ -54,9 +54,41 @@ import {
 import { Input } from "~/components/ui/input";
 import { HighlightedText, createRecipeSearch } from "~/lib/searchUtils";
 import { useDebounce } from "~/hooks/useDebounce";
+import { AddRecipeModal } from "~/components/AddRecipeModal";
+import { PendingRecipeRow } from "~/components/PendingRecipeRow";
 
 export const Route = createFileRoute("/")({
   component: CookbookPage,
+  pendingComponent: () => {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4" />
+          <p className="text-muted-foreground">Loading cookbook...</p>
+        </div>
+      </div>
+    );
+  },
+  errorComponent: ({ error }) => {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-destructive/10 border border-destructive/20 rounded-lg p-6">
+          <h2 className="text-lg font-semibold text-destructive mb-2">
+            Failed to load cookbook
+          </h2>
+          <p className="text-sm text-muted-foreground mb-4">
+            {error instanceof Error ? error.message : "An unknown error occurred"}
+          </p>
+          <button
+            onClick={() => window.location.reload()}
+            className="w-full px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+          >
+            Reload Page
+          </button>
+        </div>
+      </div>
+    );
+  },
 });
 
 type SortField = "createdAt" | "cookTime";
@@ -69,6 +101,7 @@ function CookbookPage() {
   const [sortDirection, setSortDirection] = useState<SortDirection>("desc");
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
+  const [addModalOpen, setAddModalOpen] = useState(false);
   const debouncedSearchQuery = useDebounce(searchQuery, 100);
 
   // Fetch recipes from Convex
@@ -79,6 +112,11 @@ function CookbookPage() {
   // Fetch recent recipes for sidebar
   const { data: recentRecipes = [] } = useSuspenseQuery(
     convexQuery(api.recipes.getRecent, { limit: 3 })
+  );
+
+  // Fetch pending recipes (being analyzed)
+  const { data: pendingRecipes = [] } = useSuspenseQuery(
+    convexQuery(api.vision.queries.getPendingRecipes, {})
   );
 
   // Mutations for toggling favorites and deleting
@@ -160,7 +198,7 @@ function CookbookPage() {
   };
 
   const stats = {
-    total: recipes.length,
+    total: recipes.length + pendingRecipes.length,
     favorites: recipes.filter((r) => r.isFavorite).length,
     breakfast: recipes.filter((r) => r.mealType === "breakfast").length,
     lunch: recipes.filter((r) => r.mealType === "lunch").length,
@@ -187,7 +225,7 @@ function CookbookPage() {
         <aside className="w-full lg:w-56 border-b lg:border-b-0 lg:border-r border-border bg-muted/30 p-4">
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-lg font-semibold">Cookbook</h1>
-            <Button size="sm" className="h-8">
+            <Button size="sm" className="h-8" onClick={() => setAddModalOpen(true)}>
               <Plus className="h-4 w-4 mr-1" />
               Add
             </Button>
@@ -367,6 +405,20 @@ function CookbookPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
+                {/* Show pending recipes first */}
+                {pendingRecipes.map((pending) => (
+                  <PendingRecipeRow
+                    key={pending.analysisId}
+                    analysisId={pending.analysisId}
+                    filename={pending.filename}
+                    imageUrl={pending.imageUrl}
+                    uploadDate={pending.uploadDate}
+                    status={pending.status}
+                    title={pending.title}
+                  />
+                ))}
+
+                {/* Show actual recipes */}
                 {filteredAndSortedRecipes.recipes.map((recipe) => (
                   <RecipeTableRow
                     key={recipe._id}
@@ -384,6 +436,9 @@ function CookbookPage() {
           </div>
         </div>
       </div>
+
+      {/* Add Recipe Modal */}
+      <AddRecipeModal open={addModalOpen} onOpenChange={setAddModalOpen} />
 
       {/* Full Screen Recipe Modal */}
       <Dialog open={!!selectedRecipe} onOpenChange={(open) => !open && setSelectedRecipe(null)}>
