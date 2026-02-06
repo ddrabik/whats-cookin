@@ -317,12 +317,11 @@ export function parseCookTime(cookTime?: string): number {
 /**
  * Unicode fraction character → decimal value mapping
  *
- * NOTE: This mapping is ONLY used for:
- * 1. formatQuantity() - Converting decimals back to unicode for display (via DECIMAL_TO_FRACTION)
- * 2. QTY regex pattern - Matching unicode fractions in ingredient strings
+ * Used for the QTY regex pattern to match unicode fractions in ingredient strings.
  *
- * The parseQuantity() function NO LONGER uses this mapping - it uses Unicode
- * normalization (NFKD) instead, which automatically handles ALL unicode fractions.
+ * NOTE: The parseQuantity() function does NOT use this mapping for parsing -
+ * it uses Unicode normalization (NFKD) instead, which automatically handles
+ * ALL unicode fractions (not just the ones listed here).
  */
 const UNICODE_FRACTIONS: Record<string, number> = {
   "½": 0.5,
@@ -341,56 +340,6 @@ const UNICODE_FRACTIONS: Record<string, number> = {
   "⅝": 0.625,
   "⅞": 0.875,
 };
-
-/**
- * Inverted map: decimal value → unicode fraction character
- * Used by formatQuantity() for display formatting
- */
-const DECIMAL_TO_FRACTION: Record<number, string> = Object.fromEntries(
-  Object.entries(UNICODE_FRACTIONS).map(([char, value]) => [value, char])
-);
-
-/**
- * Format a decimal quantity as a user-friendly string with unicode fractions
- * Examples:
- *   0.5 → "½"
- *   1.5 → "1½"
- *   2.75 → "2¾"
- *   2 → "2"
- *   0.33333 → "⅓" (handles floating point precision)
- *
- * @param quantity Decimal quantity to format
- * @returns Formatted string with unicode fractions where possible
- */
-export function formatQuantity(quantity: number): string {
-  // Handle whole numbers
-  if (Number.isInteger(quantity)) {
-    return quantity.toString();
-  }
-
-  const wholePart = Math.floor(quantity);
-  const fractionalPart = quantity - wholePart;
-
-  // Try to find exact match in our fraction map
-  const exactFraction = DECIMAL_TO_FRACTION[fractionalPart];
-  if (exactFraction) {
-    return wholePart > 0 ? `${wholePart}${exactFraction}` : exactFraction;
-  }
-
-  // Handle floating point imprecision by checking nearby values
-  // (e.g., 0.333333333 should match ⅓ which is 0.333...)
-  // Use tight tolerance to avoid false matches (0.001 = 0.1%)
-  const tolerance = 0.001;
-  for (const [decimalStr, fractionChar] of Object.entries(DECIMAL_TO_FRACTION)) {
-    const decimal = Number(decimalStr);
-    if (Math.abs(fractionalPart - decimal) < tolerance) {
-      return wholePart > 0 ? `${wholePart}${fractionChar}` : fractionChar;
-    }
-  }
-
-  // Fallback: use decimal notation
-  return quantity.toString();
-}
 
 /** Pattern matching a quantity: digits/decimals/slashes, unicode fractions, or mixed */
 const QTY = `[\\d/.]*[${Object.keys(UNICODE_FRACTIONS).join("")}]|[\\d/.]+`;
