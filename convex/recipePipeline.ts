@@ -335,6 +335,56 @@ const UNICODE_FRACTIONS: Record<string, number> = {
   "⅞": 0.875,
 };
 
+/**
+ * Inverted map: decimal value → unicode fraction character
+ * Used for display formatting
+ */
+const DECIMAL_TO_FRACTION: Record<number, string> = Object.fromEntries(
+  Object.entries(UNICODE_FRACTIONS).map(([char, value]) => [value, char])
+);
+
+/**
+ * Format a decimal quantity as a user-friendly string with unicode fractions
+ * Examples:
+ *   0.5 → "½"
+ *   1.5 → "1½"
+ *   2.75 → "2¾"
+ *   2 → "2"
+ *   0.33333 → "⅓" (handles floating point precision)
+ *
+ * @param quantity Decimal quantity to format
+ * @returns Formatted string with unicode fractions where possible
+ */
+export function formatQuantity(quantity: number): string {
+  // Handle whole numbers
+  if (Number.isInteger(quantity)) {
+    return quantity.toString();
+  }
+
+  const wholePart = Math.floor(quantity);
+  const fractionalPart = quantity - wholePart;
+
+  // Try to find exact match in our fraction map
+  const exactFraction = DECIMAL_TO_FRACTION[fractionalPart];
+  if (exactFraction) {
+    return wholePart > 0 ? `${wholePart}${exactFraction}` : exactFraction;
+  }
+
+  // Handle floating point imprecision by checking nearby values
+  // (e.g., 0.333333333 should match ⅓ which is 0.333...)
+  // Use tight tolerance to avoid false matches (0.001 = 0.1%)
+  const tolerance = 0.001;
+  for (const [decimalStr, fractionChar] of Object.entries(DECIMAL_TO_FRACTION)) {
+    const decimal = Number(decimalStr);
+    if (Math.abs(fractionalPart - decimal) < tolerance) {
+      return wholePart > 0 ? `${wholePart}${fractionChar}` : fractionChar;
+    }
+  }
+
+  // Fallback: use decimal notation
+  return quantity.toString();
+}
+
 /** Pattern matching a quantity: digits/decimals/slashes, unicode fractions, or mixed */
 const QTY = `[\\d/.]*[${Object.keys(UNICODE_FRACTIONS).join("")}]|[\\d/.]+`;
 

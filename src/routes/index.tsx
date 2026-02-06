@@ -28,6 +28,7 @@ import {
 import type { FuseResultMatch } from "fuse.js";
 import { api } from "../../convex/_generated/api";
 import type { MealTypeFilter, Recipe } from "~/types/recipe";
+import { formatQuantity } from "~/lib/utils";
 import { Button } from "~/components/ui/button";
 import { Badge } from "~/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar";
@@ -513,10 +514,10 @@ function CookbookPage() {
                                 // Display unparsed natural language as-is
                                 <span className="text-muted-foreground">{ingredient.originalString}</span>
                               ) : (
-                                // Display structured ingredient
+                                // Display structured ingredient with formatted quantity
                                 <>
                                   <span className="font-medium">
-                                    {ingredient.quantity} {ingredient.unit}
+                                    {formatQuantity(ingredient.quantity)} {ingredient.unit}
                                   </span>{" "}
                                   <span className="text-muted-foreground">{ingredient.name}</span>
                                 </>
