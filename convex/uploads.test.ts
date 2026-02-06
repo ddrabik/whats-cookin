@@ -52,9 +52,10 @@ describe("File Upload Validation", () => {
       expect(result.valid).toBe(true);
     });
 
-    test("accepts image/heic", () => {
+    test("rejects image/heic", () => {
       const result = validateMimeType("image/heic");
-      expect(result.valid).toBe(true);
+      expect(result.valid).toBe(false);
+      expect(result.error?.code).toBe("INVALID_FILE_TYPE");
     });
 
     test("accepts image/webp", () => {
@@ -62,10 +63,9 @@ describe("File Upload Validation", () => {
       expect(result.valid).toBe(true);
     });
 
-    test("rejects image/gif", () => {
+    test("accepts image/gif", () => {
       const result = validateMimeType("image/gif");
-      expect(result.valid).toBe(false);
-      expect(result.error?.code).toBe("INVALID_FILE_TYPE");
+      expect(result.valid).toBe(true);
     });
 
     test("rejects video/mp4", () => {
