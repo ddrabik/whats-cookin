@@ -60,6 +60,9 @@ export default defineSchema({
         quantity: v.number(),
         name: v.string(),
         unit: v.string(),
+        // Original unparsed string - only present when parsing falls back
+        // Used to display natural language like "salt to taste" as-is
+        originalString: v.optional(v.string()),
       })
     ),
 

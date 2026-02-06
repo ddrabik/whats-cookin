@@ -342,10 +342,13 @@ const QTY = `[\\d/.]*[${Object.keys(UNICODE_FRACTIONS).join("")}]|[\\d/.]+`;
  * Parse ingredient strings into structured format
  * Attempts basic parsing of "quantity unit name" format
  * Supports unicode fractions (½, ¼, ¾) and mixed numbers (1 ½, 1½)
+ *
+ * @returns Array of ingredient objects. If parsing fails, originalString is set
+ *          to preserve the unparsed text for display (e.g., "salt to taste")
  */
 export function parseIngredients(
   ingredientStrings: Array<string>
-): Array<{ quantity: number; name: string; unit: string }> {
+): Array<{ quantity: number; name: string; unit: string; originalString?: string }> {
   // Build regexes once using the quantity pattern
   // "2 cups flour", "½ cup flour", "1 ½ cups flour", "1½ cups milk"
   const withUnit = new RegExp(`^((?:${QTY})(?:\\s+(?:${QTY}))?)\\s+(\\w+)\\s+(.+)$`);
@@ -374,10 +377,12 @@ export function parseIngredients(
     }
 
     // Fallback: just use the whole string as name
+    // Set originalString to indicate this should be displayed as-is
     return {
       quantity: 1,
       unit: "whole",
       name: str,
+      originalString: str,
     };
   });
 }

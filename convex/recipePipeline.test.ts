@@ -78,20 +78,22 @@ describe("parseQuantity", () => {
 describe("parseIngredients", () => {
   // ── Already working cases ───────────────────────────────────────────────
   describe("standard formats", () => {
-    test("parses '2 cups flour'", () => {
+    test("parses '2 cups flour' without originalString", () => {
       const result = parseIngredients(["2 cups flour"]);
       expect(result).toEqual([{ quantity: 2, unit: "cups", name: "flour" }]);
+      expect(result[0].originalString).toBeUndefined();
     });
 
-    test("parses '3 eggs' (no unit)", () => {
+    test("parses '3 eggs' (no unit) without originalString", () => {
       const result = parseIngredients(["3 eggs"]);
       expect(result).toEqual([{ quantity: 3, unit: "whole", name: "eggs" }]);
+      expect(result[0].originalString).toBeUndefined();
     });
 
-    test("falls back to whole string as name for unrecognized format", () => {
+    test("falls back to whole string as name with originalString set", () => {
       const result = parseIngredients(["salt to taste"]);
       expect(result).toEqual([
-        { quantity: 1, unit: "whole", name: "salt to taste" },
+        { quantity: 1, unit: "whole", name: "salt to taste", originalString: "salt to taste" },
       ]);
     });
   });
@@ -165,6 +167,62 @@ describe("parseIngredients", () => {
       const result = parseIngredients(["1/4 cup sugar"]);
       expect(result).toEqual([
         { quantity: 0.25, unit: "cup", name: "sugar" },
+      ]);
+    });
+  });
+
+  // ── Non-standard measurements (pinch, dash, to taste) ───────────────────
+  describe("cooking terminology", () => {
+    test("parses '1 pinch salt' without originalString", () => {
+      const result = parseIngredients(["1 pinch salt"]);
+      expect(result).toEqual([
+        { quantity: 1, unit: "pinch", name: "salt" },
+      ]);
+      expect(result[0].originalString).toBeUndefined();
+    });
+
+    test("parses '2 dashes pepper' without originalString", () => {
+      const result = parseIngredients(["2 dashes pepper"]);
+      expect(result).toEqual([
+        { quantity: 2, unit: "dashes", name: "pepper" },
+      ]);
+      expect(result[0].originalString).toBeUndefined();
+    });
+
+    test("parses '1 handful spinach' without originalString", () => {
+      const result = parseIngredients(["1 handful spinach"]);
+      expect(result).toEqual([
+        { quantity: 1, unit: "handful", name: "spinach" },
+      ]);
+      expect(result[0].originalString).toBeUndefined();
+    });
+
+    test("parses '3 cloves garlic' without originalString", () => {
+      const result = parseIngredients(["3 cloves garlic"]);
+      expect(result).toEqual([
+        { quantity: 3, unit: "cloves", name: "garlic" },
+      ]);
+      expect(result[0].originalString).toBeUndefined();
+    });
+
+    test("sets originalString for 'salt to taste'", () => {
+      const result = parseIngredients(["salt to taste"]);
+      expect(result).toEqual([
+        { quantity: 1, unit: "whole", name: "salt to taste", originalString: "salt to taste" },
+      ]);
+    });
+
+    test("sets originalString for 'a pinch of salt'", () => {
+      const result = parseIngredients(["a pinch of salt"]);
+      expect(result).toEqual([
+        { quantity: 1, unit: "whole", name: "a pinch of salt", originalString: "a pinch of salt" },
+      ]);
+    });
+
+    test("sets originalString for 'pinch salt' (no number)", () => {
+      const result = parseIngredients(["pinch salt"]);
+      expect(result).toEqual([
+        { quantity: 1, unit: "whole", name: "pinch salt", originalString: "pinch salt" },
       ]);
     });
   });

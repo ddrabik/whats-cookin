@@ -509,10 +509,18 @@ function CookbookPage() {
                           <li key={index} className="flex items-baseline gap-2">
                             <span className="text-primary">•</span>
                             <span>
-                              <span className="font-medium">
-                                {ingredient.quantity} {ingredient.unit}
-                              </span>{" "}
-                              <span className="text-muted-foreground">{ingredient.name}</span>
+                              {ingredient.originalString ? (
+                                // Display unparsed natural language as-is
+                                <span className="text-muted-foreground">{ingredient.originalString}</span>
+                              ) : (
+                                // Display structured ingredient
+                                <>
+                                  <span className="font-medium">
+                                    {ingredient.quantity} {ingredient.unit}
+                                  </span>{" "}
+                                  <span className="text-muted-foreground">{ingredient.name}</span>
+                                </>
+                              )}
                             </span>
                           </li>
                         ))}
