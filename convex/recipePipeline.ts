@@ -285,7 +285,7 @@ async function buildRecipeFromAnalysis(
  * Parse cook time string to extract minutes
  * Examples: "30 min", "1 hour", "1h 30m", "45 minutes"
  */
-function parseCookTime(cookTime?: string): number {
+export function parseCookTime(cookTime?: string): number {
   if (!cookTime) return 0;
 
   const lower = cookTime.toLowerCase();
@@ -315,15 +315,46 @@ function parseCookTime(cookTime?: string): number {
 }
 
 /**
+ * Unicode fraction character → decimal value mapping
+ */
+const UNICODE_FRACTIONS: Record<string, number> = {
+  "½": 0.5,
+  "⅓": 1 / 3,
+  "⅔": 2 / 3,
+  "¼": 0.25,
+  "¾": 0.75,
+  "⅕": 0.2,
+  "⅖": 0.4,
+  "⅗": 0.6,
+  "⅘": 0.8,
+  "⅙": 1 / 6,
+  "⅚": 5 / 6,
+  "⅛": 0.125,
+  "⅜": 0.375,
+  "⅝": 0.625,
+  "⅞": 0.875,
+};
+
+/** Pattern matching a quantity: digits/decimals/slashes, unicode fractions, or mixed */
+const QTY = `[\\d/.]*[${Object.keys(UNICODE_FRACTIONS).join("")}]|[\\d/.]+`;
+
+/**
  * Parse ingredient strings into structured format
  * Attempts basic parsing of "quantity unit name" format
+ * Supports unicode fractions (½, ¼, ¾) and mixed numbers (1 ½, 1½)
  */
-function parseIngredients(
+export function parseIngredients(
   ingredientStrings: Array<string>
 ): Array<{ quantity: number; name: string; unit: string }> {
+  // Build regexes once using the quantity pattern
+  // "2 cups flour", "½ cup flour", "1 ½ cups flour", "1½ cups milk"
+  const withUnit = new RegExp(`^((?:${QTY})(?:\\s+(?:${QTY}))?)\\s+(\\w+)\\s+(.+)$`);
+  // "2 eggs", "½ egg"
+  const noUnit = new RegExp(`^((?:${QTY})(?:\\s+(?:${QTY}))?)\\s+(.+)$`);
+
   return ingredientStrings.map((str) => {
-    // Try to parse "2 cups flour" or "1 tsp salt" format
-    const match = str.match(/^([\d/.]+)\s+(\w+)\s+(.+)$/);
+    // Try to parse "2 cups flour" or "½ tsp salt" format
+    const match = str.match(withUnit);
     if (match) {
       return {
         quantity: parseQuantity(match[1]),
@@ -333,7 +364,7 @@ function parseIngredients(
     }
 
     // Try "2 eggs" format (no unit)
-    const simpleMatch = str.match(/^([\d/.]+)\s+(.+)$/);
+    const simpleMatch = str.match(noUnit);
     if (simpleMatch) {
       return {
         quantity: parseQuantity(simpleMatch[1]),
@@ -353,26 +384,56 @@ function parseIngredients(
 
 /**
  * Parse quantity string to number
- * Handles fractions like "1/2" or "1.5"
+ * Handles text fractions ("1/2"), decimals ("1.5"), unicode fractions ("½"),
+ * and mixed numbers ("1½", "1 ½")
  */
-function parseQuantity(str: string): number {
-  // Handle fractions
-  if (str.includes("/")) {
-    const [numerator, denominator] = str.split("/");
+export function parseQuantity(str: string): number {
+  const trimmed = str.trim();
+
+  // Check for standalone unicode fraction (e.g. "½")
+  if (trimmed in UNICODE_FRACTIONS) {
+    return UNICODE_FRACTIONS[trimmed];
+  }
+
+  // Check for mixed number with unicode fraction (e.g. "1½" or "1 ½")
+  for (const [char, value] of Object.entries(UNICODE_FRACTIONS)) {
+    if (trimmed.includes(char)) {
+      const whole = trimmed.replace(char, "").trim();
+      return (whole ? parseFloat(whole) : 0) + value;
+    }
+  }
+
+  // Handle text fractions (e.g. "1/2")
+  if (trimmed.includes("/")) {
+    const [numerator, denominator] = trimmed.split("/");
     return parseFloat(numerator) / parseFloat(denominator);
   }
-  return parseFloat(str);
+
+  return parseFloat(trimmed);
 }
 
 /**
  * Attempt to infer meal type from recipe data
  * Returns null if unable to determine
  */
-function inferMealType(recipeData: {
+export function inferMealType(recipeData: {
   title?: string;
   ingredients?: Array<string>;
 }): "breakfast" | "lunch" | "dinner" | "snack" | "dessert" | null {
   const text = [recipeData.title ?? "", ...(recipeData.ingredients ?? [])].join(" ").toLowerCase();
+
+  // Check for breakfast keywords first (before dessert, because "pancake" contains "cake")
+  if (
+    text.includes("pancake") ||
+    text.includes("waffle") ||
+    text.includes("breakfast") ||
+    text.includes("toast") ||
+    text.includes("egg") ||
+    text.includes("cereal") ||
+    text.includes("oatmeal")
+  ) {
+    return "breakfast";
+  }
 
   // Check for dessert keywords
   if (
@@ -384,19 +445,6 @@ function inferMealType(recipeData: {
     text.includes("sweet")
   ) {
     return "dessert";
-  }
-
-  // Check for breakfast keywords
-  if (
-    text.includes("pancake") ||
-    text.includes("waffle") ||
-    text.includes("breakfast") ||
-    text.includes("toast") ||
-    text.includes("egg") ||
-    text.includes("cereal") ||
-    text.includes("oatmeal")
-  ) {
-    return "breakfast";
   }
 
   // Check for dinner keywords
