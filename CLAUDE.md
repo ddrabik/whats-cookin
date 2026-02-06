@@ -38,6 +38,8 @@ npm run lint        # Run TypeScript compiler AND ESLint (use this!)
 
 **IMPORTANT**: Always run `npm run lint` after implementing features to catch both TypeScript and ESLint errors before committing. This command runs both `tsc` (TypeScript compiler) and `eslint` (code quality checks including Convex-specific rules).
 
+**IMPORTANT**: Always run `npm test` after any change to back-end code (`convex/`). The recipe pipeline test suite (`convex/recipePipeline.test.ts`) covers ingredient parsing, cook time parsing, and meal type inference. All tests must pass before committing.
+
 ## Architecture
 
 - **Frontend**: TanStack Start (React) with file-based routing in `src/routes/`

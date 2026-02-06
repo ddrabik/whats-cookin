@@ -285,7 +285,7 @@ async function buildRecipeFromAnalysis(
  * Parse cook time string to extract minutes
  * Examples: "30 min", "1 hour", "1h 30m", "45 minutes"
  */
-function parseCookTime(cookTime?: string): number {
+export function parseCookTime(cookTime?: string): number {
   if (!cookTime) return 0;
 
   const lower = cookTime.toLowerCase();
@@ -315,15 +315,42 @@ function parseCookTime(cookTime?: string): number {
 }
 
 /**
+ * Unicode character class for matching vulgar fraction characters in regex patterns.
+ *
+ * Covers ALL Unicode vulgar fractions:
+ * - U+00BC-U+00BE: ¼ ½ ¾ (Latin-1 Supplement)
+ * - U+2150-U+215F: ⅐ ⅑ ⅒ ⅓ ⅔ ⅕ ⅖ ⅗ ⅘ ⅙ ⅚ ⅛ ⅜ ⅝ ⅞ ⅟ (Number Forms)
+ *
+ * This is more robust than a hardcoded character list because:
+ * 1. It covers ALL vulgar fractions defined in Unicode
+ * 2. Uses standard Unicode ranges that are well-documented
+ * 3. No decimal values to maintain (parseQuantity uses NFKD normalization)
+ */
+const UNICODE_FRACTION_CLASS = "\\u00BC-\\u00BE\\u2150-\\u215F";
+
+/** Pattern matching a quantity: digits/decimals/slashes, unicode fractions, or mixed */
+const QTY = `[\\d/.]*[${UNICODE_FRACTION_CLASS}]|[\\d/.]+`;
+
+/**
  * Parse ingredient strings into structured format
  * Attempts basic parsing of "quantity unit name" format
+ * Supports unicode fractions (½, ¼, ¾) and mixed numbers (1 ½, 1½)
+ *
+ * @returns Array of ingredient objects. If parsing fails, originalString is set
+ *          to preserve the unparsed text for display (e.g., "salt to taste")
  */
-function parseIngredients(
+export function parseIngredients(
   ingredientStrings: Array<string>
-): Array<{ quantity: number; name: string; unit: string }> {
+): Array<{ quantity: number; name: string; unit: string; originalString?: string }> {
+  // Build regexes once using the quantity pattern
+  // "2 cups flour", "½ cup flour", "1 ½ cups flour", "1½ cups milk"
+  const withUnit = new RegExp(`^((?:${QTY})(?:\\s+(?:${QTY}))?)\\s+(\\w+)\\s+(.+)$`);
+  // "2 eggs", "½ egg"
+  const noUnit = new RegExp(`^((?:${QTY})(?:\\s+(?:${QTY}))?)\\s+(.+)$`);
+
   return ingredientStrings.map((str) => {
-    // Try to parse "2 cups flour" or "1 tsp salt" format
-    const match = str.match(/^([\d/.]+)\s+(\w+)\s+(.+)$/);
+    // Try to parse "2 cups flour" or "½ tsp salt" format
+    const match = str.match(withUnit);
     if (match) {
       return {
         quantity: parseQuantity(match[1]),
@@ -333,7 +360,7 @@ function parseIngredients(
     }
 
     // Try "2 eggs" format (no unit)
-    const simpleMatch = str.match(/^([\d/.]+)\s+(.+)$/);
+    const simpleMatch = str.match(noUnit);
     if (simpleMatch) {
       return {
         quantity: parseQuantity(simpleMatch[1]),
@@ -343,36 +370,88 @@ function parseIngredients(
     }
 
     // Fallback: just use the whole string as name
+    // Set originalString to indicate this should be displayed as-is
     return {
       quantity: 1,
       unit: "whole",
       name: str,
+      originalString: str,
     };
   });
 }
 
 /**
- * Parse quantity string to number
- * Handles fractions like "1/2" or "1.5"
+ * Parse quantity string to number using Unicode normalization
+ * Handles text fractions ("1/2"), decimals ("1.5"), unicode fractions ("½"),
+ * and mixed numbers ("1½", "1 ½", "1 1/2")
+ *
+ * Uses NFKD normalization to decompose unicode fractions into parseable components:
+ * - '½' → '1⁄2' (U+2044 fraction slash)
+ * - '1½' → '11⁄2' (no space, handled by regex)
+ * - '⅓' → '1⁄3', etc.
+ *
+ * This eliminates the need for a hardcoded unicode fraction mapping in parsing logic.
  */
-function parseQuantity(str: string): number {
-  // Handle fractions
-  if (str.includes("/")) {
-    const [numerator, denominator] = str.split("/");
+export function parseQuantity(str: string): number {
+  const trimmed = str.trim();
+
+  // Normalize unicode fractions to decomposed form
+  // '½' → '1⁄2' (U+2044 fraction slash)
+  // '1½' → '11⁄2' (digits concatenated, no space)
+  const normalized = trimmed.normalize("NFKD");
+
+  // Insert space before fraction slash in mixed numbers
+  // Pattern: digit followed by (digit + fraction slash)
+  // '11⁄2' → '1 1⁄2'
+  // '1⁄2' → '1⁄2' (no change, simple fraction)
+  const withSpace = normalized.replace(/(\d)(\d\u2044)/g, "$1 $2");
+
+  // Replace Unicode fraction slash (U+2044) with regular slash (U+002F)
+  // '1⁄2' → '1/2'
+  const withRegularSlash = withSpace.replace(/\u2044/g, "/");
+
+  // Handle fractions (e.g. "1/2", "1 1/2")
+  if (withRegularSlash.includes("/")) {
+    // Check for mixed number format: "1 1/2" (whole space fraction)
+    const mixedMatch = withRegularSlash.match(/^(\d+)\s+(\d+)\/(\d+)$/);
+    if (mixedMatch) {
+      const whole = parseFloat(mixedMatch[1]);
+      const numerator = parseFloat(mixedMatch[2]);
+      const denominator = parseFloat(mixedMatch[3]);
+      return whole + numerator / denominator;
+    }
+
+    // Simple fraction: "1/2"
+    const [numerator, denominator] = withRegularSlash.split("/");
     return parseFloat(numerator) / parseFloat(denominator);
   }
-  return parseFloat(str);
+
+  // Regular number or decimal
+  return parseFloat(withRegularSlash);
 }
 
 /**
  * Attempt to infer meal type from recipe data
  * Returns null if unable to determine
  */
-function inferMealType(recipeData: {
+export function inferMealType(recipeData: {
   title?: string;
   ingredients?: Array<string>;
 }): "breakfast" | "lunch" | "dinner" | "snack" | "dessert" | null {
   const text = [recipeData.title ?? "", ...(recipeData.ingredients ?? [])].join(" ").toLowerCase();
+
+  // Check for breakfast keywords first (before dessert, because "pancake" contains "cake")
+  if (
+    text.includes("pancake") ||
+    text.includes("waffle") ||
+    text.includes("breakfast") ||
+    text.includes("toast") ||
+    text.includes("egg") ||
+    text.includes("cereal") ||
+    text.includes("oatmeal")
+  ) {
+    return "breakfast";
+  }
 
   // Check for dessert keywords
   if (
@@ -384,19 +463,6 @@ function inferMealType(recipeData: {
     text.includes("sweet")
   ) {
     return "dessert";
-  }
-
-  // Check for breakfast keywords
-  if (
-    text.includes("pancake") ||
-    text.includes("waffle") ||
-    text.includes("breakfast") ||
-    text.includes("toast") ||
-    text.includes("egg") ||
-    text.includes("cereal") ||
-    text.includes("oatmeal")
-  ) {
-    return "breakfast";
   }
 
   // Check for dinner keywords
