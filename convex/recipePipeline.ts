@@ -316,6 +316,13 @@ export function parseCookTime(cookTime?: string): number {
 
 /**
  * Unicode fraction character → decimal value mapping
+ *
+ * NOTE: This mapping is ONLY used for:
+ * 1. formatQuantity() - Converting decimals back to unicode for display (via DECIMAL_TO_FRACTION)
+ * 2. QTY regex pattern - Matching unicode fractions in ingredient strings
+ *
+ * The parseQuantity() function NO LONGER uses this mapping - it uses Unicode
+ * normalization (NFKD) instead, which automatically handles ALL unicode fractions.
  */
 const UNICODE_FRACTIONS: Record<string, number> = {
   "½": 0.5,
@@ -337,7 +344,7 @@ const UNICODE_FRACTIONS: Record<string, number> = {
 
 /**
  * Inverted map: decimal value → unicode fraction character
- * Used for display formatting
+ * Used by formatQuantity() for display formatting
  */
 const DECIMAL_TO_FRACTION: Record<number, string> = Object.fromEntries(
   Object.entries(UNICODE_FRACTIONS).map(([char, value]) => [value, char])
@@ -438,30 +445,39 @@ export function parseIngredients(
 }
 
 /**
- * Parse quantity string to number
+ * Parse quantity string to number using Unicode normalization
  * Handles text fractions ("1/2"), decimals ("1.5"), unicode fractions ("½"),
- * and mixed numbers ("1½", "1 ½")
+ * and mixed numbers ("1½", "1 ½", "1 1/2")
+ *
+ * Uses NFKD normalization to decompose unicode fractions into parseable components:
+ * - '½' → '1⁄2' (U+2044 fraction slash)
+ * - '1½' → '11⁄2' (no space, handled by regex)
+ * - '⅓' → '1⁄3', etc.
+ *
+ * This eliminates the need for a hardcoded unicode fraction mapping in parsing logic.
  */
 export function parseQuantity(str: string): number {
   const trimmed = str.trim();
 
-  // Check for standalone unicode fraction (e.g. "½")
-  if (trimmed in UNICODE_FRACTIONS) {
-    return UNICODE_FRACTIONS[trimmed];
-  }
+  // Normalize unicode fractions to decomposed form
+  // '½' → '1⁄2' (U+2044 fraction slash)
+  // '1½' → '11⁄2' (digits concatenated, no space)
+  const normalized = trimmed.normalize("NFKD");
 
-  // Check for mixed number with unicode fraction (e.g. "1½" or "1 ½")
-  for (const [char, value] of Object.entries(UNICODE_FRACTIONS)) {
-    if (trimmed.includes(char)) {
-      const whole = trimmed.replace(char, "").trim();
-      return (whole ? parseFloat(whole) : 0) + value;
-    }
-  }
+  // Insert space before fraction slash in mixed numbers
+  // Pattern: digit followed by (digit + fraction slash)
+  // '11⁄2' → '1 1⁄2'
+  // '1⁄2' → '1⁄2' (no change, simple fraction)
+  const withSpace = normalized.replace(/(\d)(\d\u2044)/g, "$1 $2");
 
-  // Handle text fractions (e.g. "1/2", "1 1/2")
-  if (trimmed.includes("/")) {
+  // Replace Unicode fraction slash (U+2044) with regular slash (U+002F)
+  // '1⁄2' → '1/2'
+  const withRegularSlash = withSpace.replace(/\u2044/g, "/");
+
+  // Handle fractions (e.g. "1/2", "1 1/2")
+  if (withRegularSlash.includes("/")) {
     // Check for mixed number format: "1 1/2" (whole space fraction)
-    const mixedMatch = trimmed.match(/^(\d+)\s+(\d+)\/(\d+)$/);
+    const mixedMatch = withRegularSlash.match(/^(\d+)\s+(\d+)\/(\d+)$/);
     if (mixedMatch) {
       const whole = parseFloat(mixedMatch[1]);
       const numerator = parseFloat(mixedMatch[2]);
@@ -470,11 +486,12 @@ export function parseQuantity(str: string): number {
     }
 
     // Simple fraction: "1/2"
-    const [numerator, denominator] = trimmed.split("/");
+    const [numerator, denominator] = withRegularSlash.split("/");
     return parseFloat(numerator) / parseFloat(denominator);
   }
 
-  return parseFloat(trimmed);
+  // Regular number or decimal
+  return parseFloat(withRegularSlash);
 }
 
 /**
