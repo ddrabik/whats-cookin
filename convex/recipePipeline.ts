@@ -458,8 +458,18 @@ export function parseQuantity(str: string): number {
     }
   }
 
-  // Handle text fractions (e.g. "1/2")
+  // Handle text fractions (e.g. "1/2", "1 1/2")
   if (trimmed.includes("/")) {
+    // Check for mixed number format: "1 1/2" (whole space fraction)
+    const mixedMatch = trimmed.match(/^(\d+)\s+(\d+)\/(\d+)$/);
+    if (mixedMatch) {
+      const whole = parseFloat(mixedMatch[1]);
+      const numerator = parseFloat(mixedMatch[2]);
+      const denominator = parseFloat(mixedMatch[3]);
+      return whole + numerator / denominator;
+    }
+
+    // Simple fraction: "1/2"
     const [numerator, denominator] = trimmed.split("/");
     return parseFloat(numerator) / parseFloat(denominator);
   }

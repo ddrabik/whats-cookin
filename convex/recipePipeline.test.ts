@@ -57,7 +57,7 @@ describe("parseQuantity", () => {
     });
   });
 
-  // ── Currently broken: Mixed numbers with unicode fractions ──────────────
+  // ── Mixed numbers with unicode fractions ──────────────────────────────
   describe("mixed numbers with unicode fractions", () => {
     test("parses 1½ as 1.5", () => {
       expect(parseQuantity("1½")).toBe(1.5);
@@ -69,6 +69,25 @@ describe("parseQuantity", () => {
 
     test("parses 1⅓ as ~1.333", () => {
       expect(parseQuantity("1⅓")).toBeCloseTo(1 + 1 / 3);
+    });
+  });
+
+  // ── Mixed numbers with text fractions (space-separated) ─────────────────
+  describe("mixed numbers with text fractions", () => {
+    test("parses '1 1/2' as 1.5", () => {
+      expect(parseQuantity("1 1/2")).toBe(1.5);
+    });
+
+    test("parses '2 3/4' as 2.75", () => {
+      expect(parseQuantity("2 3/4")).toBe(2.75);
+    });
+
+    test("parses '1 1/3' as ~1.333", () => {
+      expect(parseQuantity("1 1/3")).toBeCloseTo(1 + 1 / 3);
+    });
+
+    test("parses '3 1/8' as 3.125", () => {
+      expect(parseQuantity("3 1/8")).toBe(3.125);
     });
   });
 });
@@ -135,7 +154,7 @@ describe("parseIngredients", () => {
 
   // ── Multiple ingredients at once ────────────────────────────────────────
   describe("multiple ingredients", () => {
-    test("parses a full ingredient list", () => {
+    test("parses a full ingredient list with unicode fractions", () => {
       const result = parseIngredients([
         "2 cups flour",
         "½ tsp salt",
@@ -147,6 +166,19 @@ describe("parseIngredients", () => {
         { quantity: 0.5, unit: "tsp", name: "salt" },
         { quantity: 1.5, unit: "cups", name: "milk" },
         { quantity: 3, unit: "whole", name: "eggs" },
+      ]);
+    });
+
+    test("parses ingredients with text fractions", () => {
+      const result = parseIngredients([
+        "1 1/2 cups flour",
+        "2 3/4 tsp vanilla",
+        "1/4 cup sugar",
+      ]);
+      expect(result).toEqual([
+        { quantity: 1.5, unit: "cups", name: "flour" },
+        { quantity: 2.75, unit: "tsp", name: "vanilla" },
+        { quantity: 0.25, unit: "cup", name: "sugar" },
       ]);
     });
   });
@@ -318,13 +350,20 @@ describe("formatQuantity", () => {
       expect(formatted).toBe("1½");
     });
 
-    test("multiple fractions round-trip correctly", () => {
+    test("multiple unicode fractions round-trip correctly", () => {
       const cases = ["½", "¼", "¾", "⅓", "⅔", "⅛", "2¼", "1½"];
       cases.forEach(input => {
         const parsed = parseQuantity(input);
         const formatted = formatQuantity(parsed);
         expect(formatted).toBe(input);
       });
+    });
+
+    test("text fractions convert to unicode on round-trip", () => {
+      // "1 1/2" parses to 1.5, formats to "1½"
+      expect(formatQuantity(parseQuantity("1 1/2"))).toBe("1½");
+      expect(formatQuantity(parseQuantity("2 3/4"))).toBe("2¾");
+      expect(formatQuantity(parseQuantity("1/2"))).toBe("½");
     });
   });
 });
