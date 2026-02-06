@@ -315,34 +315,21 @@ export function parseCookTime(cookTime?: string): number {
 }
 
 /**
- * Unicode fraction character → decimal value mapping
+ * Unicode character class for matching vulgar fraction characters in regex patterns.
  *
- * Used for the QTY regex pattern to match unicode fractions in ingredient strings.
+ * Covers ALL Unicode vulgar fractions:
+ * - U+00BC-U+00BE: ¼ ½ ¾ (Latin-1 Supplement)
+ * - U+2150-U+215F: ⅐ ⅑ ⅒ ⅓ ⅔ ⅕ ⅖ ⅗ ⅘ ⅙ ⅚ ⅛ ⅜ ⅝ ⅞ ⅟ (Number Forms)
  *
- * NOTE: The parseQuantity() function does NOT use this mapping for parsing -
- * it uses Unicode normalization (NFKD) instead, which automatically handles
- * ALL unicode fractions (not just the ones listed here).
+ * This is more robust than a hardcoded character list because:
+ * 1. It covers ALL vulgar fractions defined in Unicode
+ * 2. Uses standard Unicode ranges that are well-documented
+ * 3. No decimal values to maintain (parseQuantity uses NFKD normalization)
  */
-const UNICODE_FRACTIONS: Record<string, number> = {
-  "½": 0.5,
-  "⅓": 1 / 3,
-  "⅔": 2 / 3,
-  "¼": 0.25,
-  "¾": 0.75,
-  "⅕": 0.2,
-  "⅖": 0.4,
-  "⅗": 0.6,
-  "⅘": 0.8,
-  "⅙": 1 / 6,
-  "⅚": 5 / 6,
-  "⅛": 0.125,
-  "⅜": 0.375,
-  "⅝": 0.625,
-  "⅞": 0.875,
-};
+const UNICODE_FRACTION_CLASS = "\\u00BC-\\u00BE\\u2150-\\u215F";
 
 /** Pattern matching a quantity: digits/decimals/slashes, unicode fractions, or mixed */
-const QTY = `[\\d/.]*[${Object.keys(UNICODE_FRACTIONS).join("")}]|[\\d/.]+`;
+const QTY = `[\\d/.]*[${UNICODE_FRACTION_CLASS}]|[\\d/.]+`;
 
 /**
  * Parse ingredient strings into structured format
