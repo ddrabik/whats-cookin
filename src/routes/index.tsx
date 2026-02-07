@@ -443,7 +443,7 @@ function CookbookPage() {
 
       {/* Full Screen Recipe Modal */}
       <Dialog open={!!selectedRecipe} onOpenChange={(open) => !open && setSelectedRecipe(null)}>
-        <DialogContent className="sm:max-w-6xl h-[90vh] flex flex-col p-0 gap-0">
+        <DialogContent className="sm:max-w-6xl h-[90vh] flex flex-col p-0 gap-0" showCloseButton={false}>
           {selectedRecipe && (
             <>
               {/* Compact Header with Thumbnail */}
@@ -490,6 +490,7 @@ function CookbookPage() {
                       variant={selectedRecipe.isFavorite ? "default" : "outline"}
                       size="sm"
                       onClick={(e) => toggleFavorite(selectedRecipe._id, e)}
+                      className="cursor-pointer"
                     >
                       <Heart className={`h-4 w-4 mr-2 ${selectedRecipe.isFavorite ? "fill-current" : ""}`} />
                       {selectedRecipe.isFavorite ? "Favorited" : "Favorite"}
