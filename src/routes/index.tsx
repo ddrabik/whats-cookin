@@ -443,69 +443,78 @@ function CookbookPage() {
 
       {/* Full Screen Recipe Modal */}
       <Dialog open={!!selectedRecipe} onOpenChange={(open) => !open && setSelectedRecipe(null)}>
-        <DialogContent className="max-w-4xl h-[90vh] flex flex-col p-0 gap-0">
+        <DialogContent className="sm:max-w-6xl h-[90vh] flex flex-col p-0 gap-0">
           {selectedRecipe && (
             <>
-              {/* Hero Image */}
-              <div className="relative h-64 flex-shrink-0">
-                <img
-                  src={selectedRecipe.imageUrl}
-                  alt={selectedRecipe.title}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                <div className="absolute bottom-0 left-0 right-0 p-6">
-                  <DialogHeader>
-                    <DialogTitle className="text-3xl font-bold text-white">
-                      {selectedRecipe.title}
-                    </DialogTitle>
-                  </DialogHeader>
+              {/* Compact Header with Thumbnail */}
+              <div className="flex-shrink-0 border-b">
+                <div className="flex gap-4 p-6">
+                  {/* Thumbnail Image */}
+                  <div className="flex-shrink-0">
+                    <img
+                      src={selectedRecipe.imageUrl}
+                      alt={selectedRecipe.title}
+                      className="w-28 h-28 object-cover rounded-lg"
+                    />
+                  </div>
+
+                  {/* Title and Metadata */}
+                  <div className="flex-1 min-w-0">
+                    <DialogHeader className="mb-3">
+                      <DialogTitle className="text-2xl font-bold">
+                        {selectedRecipe.title}
+                      </DialogTitle>
+                    </DialogHeader>
+
+                    {/* Metadata Aside */}
+                    <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
+                      <CategoryBadge mealType={selectedRecipe.mealType} />
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <Clock className="h-4 w-4" />
+                        {selectedRecipe.cookTime}
+                      </span>
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <User className="h-4 w-4" />
+                        {selectedRecipe.author || selectedRecipe.source}
+                      </span>
+                      <span className="flex items-center gap-1 text-muted-foreground">
+                        <Calendar className="h-4 w-4" />
+                        Added {formatDate(selectedRecipe.createdAt)}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex items-start gap-2">
+                    <Button
+                      variant={selectedRecipe.isFavorite ? "default" : "outline"}
+                      size="sm"
+                      onClick={(e) => toggleFavorite(selectedRecipe._id, e)}
+                    >
+                      <Heart className={`h-4 w-4 mr-2 ${selectedRecipe.isFavorite ? "fill-current" : ""}`} />
+                      {selectedRecipe.isFavorite ? "Favorited" : "Favorite"}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setSelectedRecipe(null)}
+                    >
+                      <X className="h-5 w-5" />
+                    </Button>
+                  </div>
                 </div>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute top-4 right-4 text-white hover:bg-white/20"
-                  onClick={() => setSelectedRecipe(null)}
-                >
-                  <X className="h-5 w-5" />
-                </Button>
               </div>
 
-              {/* Content */}
-              <div className="flex-1 overflow-auto p-6">
-                {/* Meta Info */}
-                <div className="flex flex-wrap items-center gap-4 mb-6">
-                  <CategoryBadge mealType={selectedRecipe.mealType} />
-                  <span className="flex items-center gap-1 text-muted-foreground">
-                    <Clock className="h-4 w-4" />
-                    {selectedRecipe.cookTime}
-                  </span>
-                  <span className="flex items-center gap-1 text-muted-foreground">
-                    <User className="h-4 w-4" />
-                    {selectedRecipe.author || selectedRecipe.source}
-                  </span>
-                  <span className="flex items-center gap-1 text-muted-foreground">
-                    <Calendar className="h-4 w-4" />
-                    Added {formatDate(selectedRecipe.createdAt)}
-                  </span>
-                  <Button
-                    variant={selectedRecipe.isFavorite ? "default" : "outline"}
-                    size="sm"
-                    onClick={(e) => toggleFavorite(selectedRecipe._id, e)}
-                    className="ml-auto"
-                  >
-                    <Heart className={`h-4 w-4 mr-2 ${selectedRecipe.isFavorite ? "fill-current" : ""}`} />
-                    {selectedRecipe.isFavorite ? "Favorited" : "Add to Favorites"}
-                  </Button>
-                </div>
-
-                {/* Recipe Content */}
-                <div className="space-y-6">
-                  {/* Ingredients Section */}
-                  <section>
-                    <h3 className="text-lg font-semibold mb-3">Ingredients</h3>
+              {/* Two-Column Content: Ingredients | Instructions */}
+              <div className="flex-1 overflow-auto">
+                <div className="grid lg:grid-cols-2 gap-0 h-full">
+                  {/* Ingredients Column */}
+                  <section className="p-6 border-r overflow-auto">
+                    <h3 className="text-lg font-semibold mb-4 sticky top-0 bg-background pb-2 border-b">
+                      Ingredients
+                    </h3>
                     {selectedRecipe.ingredients.length > 0 ? (
-                      <ul className="space-y-2">
+                      <ul className="space-y-2.5">
                         {selectedRecipe.ingredients.map((ingredient, index) => (
                           <li key={index} className="flex items-baseline gap-2">
                             <span className="text-primary">•</span>
@@ -531,11 +540,13 @@ function CookbookPage() {
                     )}
                   </section>
 
-                  {/* Instructions Section */}
-                  <section>
-                    <h3 className="text-lg font-semibold mb-3">Instructions</h3>
+                  {/* Instructions Column */}
+                  <section className="p-6 overflow-auto">
+                    <h3 className="text-lg font-semibold mb-4 sticky top-0 bg-background pb-2 border-b">
+                      Instructions
+                    </h3>
                     {selectedRecipe.instructions && selectedRecipe.instructions.length > 0 ? (
-                      <ol className="space-y-3">
+                      <ol className="space-y-4">
                         {selectedRecipe.instructions.map((instruction, index) => (
                           <li key={index} className="flex gap-3">
                             <span className="flex-shrink-0 flex items-center justify-center w-6 h-6 rounded-full bg-primary text-primary-foreground text-sm font-medium">
