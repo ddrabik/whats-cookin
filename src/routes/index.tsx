@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "convex/react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
@@ -104,6 +104,19 @@ function CookbookPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [addModalOpen, setAddModalOpen] = useState(false);
   const debouncedSearchQuery = useDebounce(searchQuery, 100);
+  const modalTitleRef = useRef<HTMLHeadingElement>(null);
+
+  // Focus modal title when recipe is selected
+  useEffect(() => {
+    if (selectedRecipe) {
+      // Use requestAnimationFrame to run after browser rendering
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          modalTitleRef.current?.focus({ preventScroll: true });
+        });
+      });
+    }
+  }, [selectedRecipe]);
 
   // Fetch recipes from Convex
   const { data: recipes = [] } = useSuspenseQuery(
@@ -461,7 +474,7 @@ function CookbookPage() {
                   {/* Title and Metadata */}
                   <div className="flex-1 min-w-0">
                     <DialogHeader className="mb-3">
-                      <DialogTitle className="text-2xl font-bold">
+                      <DialogTitle ref={modalTitleRef} className="text-2xl font-bold outline-none" tabIndex={-1}>
                         {selectedRecipe.title}
                       </DialogTitle>
                     </DialogHeader>
@@ -500,7 +513,6 @@ function CookbookPage() {
                       size="icon"
                       onClick={() => setSelectedRecipe(null)}
                       className="cursor-pointer"
-                      autoFocus
                     >
                       <X className="h-5 w-5" />
                     </Button>
