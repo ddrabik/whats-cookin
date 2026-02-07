@@ -500,6 +500,7 @@ function CookbookPage() {
                       size="icon"
                       onClick={() => setSelectedRecipe(null)}
                       className="cursor-pointer"
+                      autoFocus
                     >
                       <X className="h-5 w-5" />
                     </Button>
