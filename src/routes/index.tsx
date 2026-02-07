@@ -509,10 +509,10 @@ function CookbookPage() {
               </div>
 
               {/* Two-Column Content: Ingredients | Instructions */}
-              <div className="flex-1 overflow-auto">
-                <div className="grid lg:grid-cols-2 gap-0 h-full">
+              <div className="flex-1 overflow-auto lg:overflow-hidden">
+                <div className="lg:grid lg:grid-cols-2 gap-0 lg:h-full">
                   {/* Ingredients Column */}
-                  <section className="px-6 pb-6 border-r overflow-auto">
+                  <section className="px-6 pb-6 lg:border-r lg:overflow-auto">
                     <h3 className="text-lg font-semibold sticky top-0 bg-background pt-6 pb-4 z-10">
                       Ingredients
                     </h3>
@@ -544,7 +544,7 @@ function CookbookPage() {
                   </section>
 
                   {/* Instructions Column */}
-                  <section className="px-6 pb-6 overflow-auto">
+                  <section className="px-6 pb-6 lg:overflow-auto">
                     <h3 className="text-lg font-semibold sticky top-0 bg-background pt-6 pb-4 z-10">
                       Instructions
                     </h3>
