@@ -1,4 +1,4 @@
-# Meal Planner
+# What's Cookin
 
 A modern recipe management application with AI-powered recipe extraction from images.
 
@@ -32,8 +32,8 @@ A modern recipe management application with AI-powered recipe extraction from im
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/yourusername/meal-planner.git
-   cd meal-planner
+   git clone https://github.com/yourusername/whats-cookin.git
+   cd whats-cookin
    ```
 
 2. Install dependencies:
@@ -84,7 +84,7 @@ A modern recipe management application with AI-powered recipe extraction from im
 ## Project Structure
 
 ```
-meal-planner/
+whats-cookin/
 ├── convex/                    # Backend: Convex functions and schema
 │   ├── uploads/               # File upload handling
 │   ├── vision/                # OpenAI Vision integration
