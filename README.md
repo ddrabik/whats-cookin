@@ -2,10 +2,6 @@
 
 A modern recipe management application with AI-powered recipe extraction from images.
 
-![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue)
-![React](https://img.shields.io/badge/React-19-61dafb)
-![Convex](https://img.shields.io/badge/Convex-1.31-ff6b6b)
-
 ## Features
 
 - **AI Recipe Extraction** - Upload photos of recipes and automatically extract ingredients and instructions using OpenAI Vision
