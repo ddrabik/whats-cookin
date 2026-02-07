@@ -512,8 +512,8 @@ function CookbookPage() {
               <div className="flex-1 overflow-auto">
                 <div className="grid lg:grid-cols-2 gap-0 h-full">
                   {/* Ingredients Column */}
-                  <section className="p-6 border-r overflow-auto">
-                    <h3 className="text-lg font-semibold mb-4 sticky top-0 bg-background pb-2 z-10">
+                  <section className="px-6 pb-6 border-r overflow-auto">
+                    <h3 className="text-lg font-semibold sticky top-0 bg-background pt-6 pb-4 z-10">
                       Ingredients
                     </h3>
                     {selectedRecipe.ingredients.length > 0 ? (
@@ -544,8 +544,8 @@ function CookbookPage() {
                   </section>
 
                   {/* Instructions Column */}
-                  <section className="p-6 overflow-auto">
-                    <h3 className="text-lg font-semibold mb-4 sticky top-0 bg-background pb-2 z-10">
+                  <section className="px-6 pb-6 overflow-auto">
+                    <h3 className="text-lg font-semibold sticky top-0 bg-background pt-6 pb-4 z-10">
                       Instructions
                     </h3>
                     {selectedRecipe.instructions && selectedRecipe.instructions.length > 0 ? (
