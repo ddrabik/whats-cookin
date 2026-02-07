@@ -59,7 +59,7 @@ export const backfillRecipes = internalMutation({
 
       // If has recipeId, check if recipe still exists
       if (analysis.recipeId) {
-        const recipe = await ctx.db.get(analysis.recipeId);
+        const recipe = await ctx.db.get("recipes", analysis.recipeId);
         if (recipe) {
           // Recipe still exists, skip this analysis
           diagnostics.recipeStillExists++;
@@ -89,7 +89,7 @@ export const backfillRecipes = internalMutation({
         const recipeId = await buildRecipeFromAnalysis(ctx, analysis);
 
         // Mark analysis as processed
-        await ctx.db.patch(analysis._id, {
+        await ctx.db.patch("visionAnalysis", analysis._id, {
           recipeId,
           recipeCreatedAt: Date.now(),
         });
@@ -123,7 +123,7 @@ export const processCompletedAnalysis = internalMutation({
     analysisId: v.id("visionAnalysis"),
   },
   handler: async (ctx, args) => {
-    const analysis = await ctx.db.get(args.analysisId);
+    const analysis = await ctx.db.get("visionAnalysis", args.analysisId);
     if (!analysis) {
       throw new Error("Analysis not found");
     }
@@ -160,7 +160,7 @@ export const processCompletedAnalysis = internalMutation({
     const recipeId = await buildRecipeFromAnalysis(ctx, analysis);
 
     // Mark analysis as processed
-    await ctx.db.patch(args.analysisId, {
+    await ctx.db.patch("visionAnalysis", args.analysisId, {
       recipeId,
       recipeCreatedAt: Date.now(),
     });
@@ -192,7 +192,7 @@ export const manuallyCreateRecipe = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const analysis = await ctx.db.get(args.analysisId);
+    const analysis = await ctx.db.get("visionAnalysis", args.analysisId);
     if (!analysis) {
       throw new Error("Analysis not found");
     }
@@ -211,7 +211,7 @@ export const manuallyCreateRecipe = mutation({
     const recipeId = await buildRecipeFromAnalysis(ctx, analysis, args.overrides);
 
     // Mark analysis as processed
-    await ctx.db.patch(args.analysisId, {
+    await ctx.db.patch("visionAnalysis", args.analysisId, {
       recipeId,
       recipeCreatedAt: Date.now(),
     });

@@ -25,8 +25,8 @@ import {
   X,
 } from "lucide-react";
 
-import type { FuseResultMatch } from "fuse.js";
 import { api } from "../../convex/_generated/api";
+import type { FuseResultMatch } from "fuse.js";
 import type { MealTypeFilter, Recipe } from "~/types/recipe";
 import { formatQuantity } from "~/lib/utils";
 import { Button } from "~/components/ui/button";
@@ -504,7 +504,7 @@ function CookbookPage() {
                   {/* Ingredients Section */}
                   <section>
                     <h3 className="text-lg font-semibold mb-3">Ingredients</h3>
-                    {selectedRecipe.ingredients && selectedRecipe.ingredients.length > 0 ? (
+                    {selectedRecipe.ingredients.length > 0 ? (
                       <ul className="space-y-2">
                         {selectedRecipe.ingredients.map((ingredient, index) => (
                           <li key={index} className="flex items-baseline gap-2">

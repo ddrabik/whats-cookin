@@ -18,7 +18,7 @@ export const list = query({
   },
   handler: async (ctx, args) => {
     // Fetch all recipes (or use an index for the most common filter)
-    let allRecipes = await ctx.db.query("recipes").collect();
+    const allRecipes = await ctx.db.query("recipes").collect();
 
     // Apply filters in JavaScript
     let filtered = allRecipes;
@@ -44,7 +44,7 @@ export const list = query({
 export const get = query({
   args: { id: v.id("recipes") },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.id);
+    return await ctx.db.get("recipes", args.id);
   },
 });
 
@@ -140,12 +140,7 @@ export const update = mutation({
   handler: async (ctx, args) => {
     const { id, ...updates } = args;
 
-    // Only include defined fields in the update
-    const filteredUpdates = Object.fromEntries(
-      Object.entries(updates).filter(([, value]) => value !== undefined)
-    );
-
-    await ctx.db.patch(id, filteredUpdates);
+    await ctx.db.patch("recipes", id, updates);
     return id;
   },
 });
@@ -154,12 +149,12 @@ export const update = mutation({
 export const toggleFavorite = mutation({
   args: { id: v.id("recipes") },
   handler: async (ctx, args) => {
-    const recipe = await ctx.db.get(args.id);
+    const recipe = await ctx.db.get("recipes", args.id);
     if (!recipe) {
       throw new Error("Recipe not found");
     }
 
-    await ctx.db.patch(args.id, {
+    await ctx.db.patch("recipes", args.id, {
       isFavorite: !recipe.isFavorite,
     });
 
@@ -171,7 +166,7 @@ export const toggleFavorite = mutation({
 export const remove = mutation({
   args: { id: v.id("recipes") },
   handler: async (ctx, args) => {
-    await ctx.db.delete(args.id);
+    await ctx.db.delete("recipes", args.id);
     return args.id;
   },
 });
