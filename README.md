@@ -32,7 +32,7 @@ A modern recipe management application with AI-powered recipe extraction from im
 1. Clone the repository:
 
    ```bash
-   git clone https://github.com/yourusername/whats-cookin.git
+   git clone git@github.com:ddrabik/whats-cookin.git
    cd whats-cookin
    ```
 
