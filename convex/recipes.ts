@@ -203,3 +203,38 @@ export const searchInternal = internalQuery({
   },
 });
 
+// Internal query for chat action to list recipes with optional filters
+export const listInternal = internalQuery({
+  args: {
+    mealType: v.optional(
+      v.union(
+        v.literal("breakfast"),
+        v.literal("lunch"),
+        v.literal("dinner"),
+        v.literal("snack"),
+        v.literal("dessert")
+      )
+    ),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const allRecipes = await ctx.db.query("recipes").collect();
+    let filtered = allRecipes;
+    if (args.mealType) {
+      filtered = filtered.filter((recipe) => recipe.mealType === args.mealType);
+    }
+    if (args.limit) {
+      return filtered.slice(0, args.limit);
+    }
+    return filtered;
+  },
+});
+
+// Internal query for chat action to get a single recipe
+export const getInternal = internalQuery({
+  args: { id: v.id("recipes") },
+  handler: async (ctx, args) => {
+    return await ctx.db.get(args.id);
+  },
+});
+
