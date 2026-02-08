@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { formatQuantity } from "./utils";
+import { formatQuantity, formatRelativeTime } from "./utils";
 
 // =============================================================================
 // formatQuantity
@@ -89,5 +89,27 @@ describe("formatQuantity", () => {
       expect(formatQuantity(2.25)).toBe("2¼");
       expect(formatQuantity(0.5)).toBe("½");
     });
+  });
+});
+
+describe("formatRelativeTime", () => {
+  test("returns 'just now' for timestamps within last minute", () => {
+    expect(formatRelativeTime(Date.now() - 30_000)).toBe("just now");
+  });
+
+  test("returns '2m ago' for 2 minutes ago", () => {
+    expect(formatRelativeTime(Date.now() - 2 * 60 * 1000)).toBe("2m ago");
+  });
+
+  test("returns '1h ago' for 1 hour ago", () => {
+    expect(formatRelativeTime(Date.now() - 60 * 60 * 1000)).toBe("1h ago");
+  });
+
+  test("returns '3d ago' for 3 days ago", () => {
+    expect(formatRelativeTime(Date.now() - 3 * 24 * 60 * 60 * 1000)).toBe("3d ago");
+  });
+
+  test("returns '2w ago' for 2 weeks ago", () => {
+    expect(formatRelativeTime(Date.now() - 14 * 24 * 60 * 60 * 1000)).toBe("2w ago");
   });
 });

@@ -28,6 +28,25 @@ const DECIMAL_TO_FRACTION: Record<number, string> = {
 };
 
 /**
+ * Format a timestamp as relative time (e.g., "just now", "2m ago", "1h ago")
+ */
+export function formatRelativeTime(timestamp: number): string {
+  const now = Date.now();
+  const diffMs = now - timestamp;
+  const diffSeconds = Math.floor(diffMs / 1000);
+  const diffMinutes = Math.floor(diffSeconds / 60);
+  const diffHours = Math.floor(diffMinutes / 60);
+  const diffDays = Math.floor(diffHours / 24);
+  const diffWeeks = Math.floor(diffDays / 7);
+
+  if (diffSeconds < 60) return "just now";
+  if (diffMinutes < 60) return `${diffMinutes}m ago`;
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 14) return `${diffDays}d ago`;
+  return `${diffWeeks}w ago`;
+}
+
+/**
  * Format a decimal quantity as a user-friendly string with unicode fractions
  * Examples:
  *   0.5 → "½"
