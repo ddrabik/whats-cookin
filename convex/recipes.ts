@@ -1,5 +1,5 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { internalQuery, mutation, query } from "./_generated/server";
 
 // Query to list all recipes with optional filtering
 export const list = query({
@@ -168,6 +168,38 @@ export const remove = mutation({
   handler: async (ctx, args) => {
     await ctx.db.delete("recipes", args.id);
     return args.id;
+  },
+});
+
+// Pure function for search matching — exported for unit testing
+export function matchesSearchQuery(
+  recipe: { title: string; mealType: string; ingredients: Array<{ name: string }> },
+  query: string
+): boolean {
+  if (query === "") {
+    return true;
+  }
+  const q = query.toLowerCase();
+  if (recipe.title.toLowerCase().includes(q)) {
+    return true;
+  }
+  if (recipe.ingredients.some((ing) => ing.name.toLowerCase().includes(q))) {
+    return true;
+  }
+  if (recipe.mealType.toLowerCase().includes(q)) {
+    return true;
+  }
+  return false;
+}
+
+// Internal query for chat action to search recipes by text
+export const searchInternal = internalQuery({
+  args: {
+    query: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const allRecipes = await ctx.db.query("recipes").collect();
+    return allRecipes.filter((recipe) => matchesSearchQuery(recipe, args.query));
   },
 });
 
