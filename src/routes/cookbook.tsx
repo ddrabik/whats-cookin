@@ -58,7 +58,7 @@ import { useDebounce } from "~/hooks/useDebounce";
 import { AddRecipeModal } from "~/components/AddRecipeModal";
 import { PendingRecipeRow } from "~/components/PendingRecipeRow";
 
-export const Route = createFileRoute("/")({
+export const Route = createFileRoute("/cookbook")({
   component: CookbookPage,
   pendingComponent: () => {
     return (
@@ -438,10 +438,8 @@ function CookbookPage() {
           </div>
         </div>
       </div>
-
       {/* Add Recipe Modal */}
       <AddRecipeModal open={addModalOpen} onOpenChange={setAddModalOpen} />
-
       {/* Full Screen Recipe Modal */}
       <Dialog open={!!selectedRecipe} onOpenChange={(open) => !open && setSelectedRecipe(null)}>
         <DialogContent className="sm:max-w-6xl h-[90vh] flex flex-col p-0 gap-0" showCloseButton={false} initialFocus={modalTitleRef}>
@@ -524,15 +522,15 @@ function CookbookPage() {
                             <span>
                               {ingredient.originalString ? (
                                 // Display unparsed natural language as-is
-                                <span className="text-muted-foreground">{ingredient.originalString}</span>
+                                (<span className="text-muted-foreground">{ingredient.originalString}</span>)
                               ) : (
                                 // Display structured ingredient with formatted quantity
-                                <>
+                                (<>
                                   <span className="font-medium">
                                     {formatQuantity(ingredient.quantity)} {ingredient.unit}
                                   </span>{" "}
                                   <span className="text-muted-foreground">{ingredient.name}</span>
-                                </>
+                                </>)
                               )}
                             </span>
                           </li>
@@ -570,7 +568,7 @@ function CookbookPage() {
         </DialogContent>
       </Dialog>
     </main>
-  );
+  )
 }
 
 function CategoryBadge({ mealType }: { mealType: Recipe["mealType"] }) {
