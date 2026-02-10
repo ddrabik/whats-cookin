@@ -33,7 +33,8 @@ export function ChatMessageList({ messages, isWaiting }: ChatMessageListProps) {
   }
 
   return (
-    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+    <div className="flex-1 overflow-y-auto p-4">
+      <div className="max-w-[750px] mx-auto w-full space-y-4">
       {messages
         .filter((m) => m.role !== "tool")
         .map((message) => (
@@ -120,6 +121,7 @@ export function ChatMessageList({ messages, isWaiting }: ChatMessageListProps) {
       )}
 
       <div ref={bottomRef} />
+      </div>
     </div>
   );
 }
