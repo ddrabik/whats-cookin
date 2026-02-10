@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
 import { useMutation } from "convex/react";
 import { useSuspenseQuery } from "@tanstack/react-query";
@@ -13,6 +13,7 @@ import {
   Coffee,
   Filter,
   Heart,
+  MessageSquare,
   Moon,
   MoreHorizontal,
   Plus,
@@ -96,6 +97,7 @@ type SortField = "createdAt" | "cookTime";
 type SortDirection = "asc" | "desc";
 
 function CookbookPage() {
+  const navigate = useNavigate();
   const [categoryFilter, setCategoryFilter] = useState<MealTypeFilter>("all");
   const [favoritesOnly, setFavoritesOnly] = useState(false);
   const [sortField, setSortField] = useState<SortField>("createdAt");
@@ -224,7 +226,8 @@ function CookbookPage() {
     <main className="min-h-screen bg-background">
       <div className="flex flex-col lg:flex-row min-h-screen">
         {/* Sidebar */}
-        <aside className="w-full lg:w-56 border-b lg:border-b-0 lg:border-r border-border bg-muted/30 p-4">
+        <aside className="w-full lg:w-56 border-b lg:border-b-0 lg:border-r border-border bg-muted/30 p-4 flex flex-col">
+          <div className="flex-1">
           <div className="flex items-center justify-between mb-6">
             <h1 className="text-lg font-semibold">Cookbook</h1>
             <Button size="sm" className="h-8" onClick={() => setAddModalOpen(true)}>
@@ -304,6 +307,19 @@ function CookbookPage() {
                 </button>
               ))}
             </div>
+          </div>
+          </div>
+
+          {/* Chat link */}
+          <div className="pt-4 mt-4 border-t border-border">
+            <Button
+              variant="ghost"
+              className="w-full justify-start gap-2"
+              onClick={() => void navigate({ to: "/" })}
+            >
+              <MessageSquare className="h-4 w-4" />
+              Chat
+            </Button>
           </div>
         </aside>
 
