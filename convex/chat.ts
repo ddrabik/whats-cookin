@@ -141,9 +141,14 @@ export const respond = internalAction({
       const choice = completion.choices[0];
       const responseMessage = choice.message;
 
-      if (responseMessage.tool_calls && responseMessage.tool_calls.length > 0) {
+      const functionCalls = responseMessage.tool_calls?.filter(
+        (tc): tc is Extract<typeof tc, { type: "function" }> =>
+          tc.type === "function"
+      );
+
+      if (functionCalls && functionCalls.length > 0) {
         // Save assistant message with tool calls
-        const toolCallsForDb = responseMessage.tool_calls.map((tc) => ({
+        const toolCallsForDb = functionCalls.map((tc) => ({
           id: tc.id,
           name: tc.function.name,
           arguments: tc.function.arguments,
@@ -159,7 +164,7 @@ export const respond = internalAction({
         openaiMessages.push({
           role: "assistant",
           content: responseMessage.content ?? "",
-          tool_calls: responseMessage.tool_calls.map((tc) => ({
+          tool_calls: functionCalls.map((tc) => ({
             id: tc.id,
             type: "function" as const,
             function: { name: tc.function.name, arguments: tc.function.arguments },
@@ -167,7 +172,7 @@ export const respond = internalAction({
         });
 
         // Execute each tool call
-        for (const toolCall of responseMessage.tool_calls) {
+        for (const toolCall of functionCalls) {
           let result: string;
           try {
             const toolArgs = parseToolArguments(toolCall.function.arguments);
