@@ -1,17 +1,16 @@
 # Agent Planning Lessons
 
-## Planning Lessons — Phase 1: Chat Interface (2026-02-08)
+Important: only add advice, leassons, and learnings that can apply across many projects. Single project or tech-specific learnings should go into the memory file.
 
-### What worked well
+### What works well
 
 - **Step decomposition with clear dependencies** — Breaking the work into steps with explicit dependency chains (schema → CRUD → chat action, schema → routes → UI) enabled aggressive parallelization.
 - **TDD with pure functions** — Extracting code as pure exported functions made testing trivial — no mocks needed, tests run in milliseconds.
 - **File manifest** — The explicit table of files to create/modify/rename prevented agents from accidentally touching unrelated files or creating files in wrong locations.
 - **Existing UI component inventory** — Listing which shadcn components exist and how to use them (variant names, size props) prevented agents from guessing or importing non-existent components.
 
-### What didn't work
+### What doesnt work well
 - **Over-specified code blocks** — Providing near-complete code implementations in the plan meant agents were essentially copy-pasting rather than reasoning. This works but defeats the purpose of using intelligent agents. Better: specify the interface/contract and let agents implement.
-- **OpenAI SDK v6 type changes not accounted for** — The plan used `.function` on `ChatCompletionMessageToolCall` without knowing it became a discriminated union (`type: 'function' | 'custom'`) in SDK v6. Accessing `.function` directly causes TS errors because `ChatCompletionMessageCustomToolCall` doesn't have that property. Fix: filter with `tc.type === 'function'` and use `Extract<>` to narrow the type. **Lesson: always check SDK type definitions for union types before specifying property access patterns.**
 
 ### Concrete improvements for future plans
 
