@@ -123,6 +123,8 @@ export default defineSchema({
     // Retry tracking
     retryCount: v.number(),
     maxRetries: v.number(),
+    // Prompt version tracking
+    promptVersion: v.optional(v.string()),
     // Timestamps
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -136,6 +138,7 @@ export default defineSchema({
     title: v.string(),
     createdAt: v.number(),
     updatedAt: v.number(),
+    promptVersion: v.optional(v.string()),
   }).index("by_updatedAt", ["updatedAt"]),
 
   messages: defineTable({

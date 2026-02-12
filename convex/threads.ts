@@ -40,3 +40,15 @@ export const touch = internalMutation({
     });
   },
 });
+
+export const setPromptVersion = internalMutation({
+  args: {
+    threadId: v.id("threads"),
+    promptVersion: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.threadId, {
+      promptVersion: args.promptVersion,
+    });
+  },
+});

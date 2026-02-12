@@ -8,6 +8,7 @@ import type {
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { internalAction } from "./_generated/server";
+import { CHAT_SYSTEM_PROMPT, promptTag } from "./prompts";
 
 const MAX_TOOL_CALL_ITERATIONS = 10;
 
@@ -46,15 +47,6 @@ export function convertToOpenAIMessage(msg: DbMessage): ChatCompletionMessagePar
 export function parseToolArguments(argsStr: string): Record<string, unknown> {
   return JSON.parse(argsStr) as Record<string, unknown>;
 }
-
-// ---- System prompt ----
-const SYSTEM_PROMPT = `You are a friendly meal planning assistant called "What's Cookin'". You help users plan meals, find recipes, and explore their cookbook.
-
-You have access to the user's recipe collection. Use your tools to search and browse recipes when the user asks about meals, ingredients, or meal planning.
-
-When presenting recipes, format them nicely in markdown. When suggesting meal plans, organize them by day/meal.
-
-Always be helpful, concise, and enthusiastic about cooking!`;
 
 // ---- Tool definitions ----
 const tools: ChatCompletionTool[] = [
@@ -111,14 +103,20 @@ export const respond = internalAction({
   args: { threadId: v.id("threads") },
   handler: async (ctx, args) => {
     try {
-    // 1. Load message history
+    // 1. Record which prompt version is being used
+    await ctx.runMutation(internal.threads.setPromptVersion, {
+      threadId: args.threadId,
+      promptVersion: promptTag(CHAT_SYSTEM_PROMPT),
+    });
+
+    // 2. Load message history
     const messages = await ctx.runQuery(internal.messages.listInternal, {
       threadId: args.threadId,
     });
 
-    // 2. Convert to OpenAI format
+    // 3. Convert to OpenAI format
     const openaiMessages: ChatCompletionMessageParam[] = [
-      { role: "system", content: SYSTEM_PROMPT },
+      { role: "system", content: CHAT_SYSTEM_PROMPT.content },
       ...messages.map((m) =>
         convertToOpenAIMessage({
           role: m.role,
@@ -129,10 +127,10 @@ export const respond = internalAction({
       ),
     ];
 
-    // 3. Initialize OpenAI
+    // 4. Initialize OpenAI
     const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
-    // 4. Call OpenAI in a loop (handles tool calls)
+    // 5. Call OpenAI in a loop (handles tool calls)
     let continueLoop = true;
     let toolCallLoopCount = 0;
     while (continueLoop) {
@@ -221,7 +219,7 @@ export const respond = internalAction({
       }
     }
 
-    // 5. Touch the thread to update timestamp
+    // 6. Touch the thread to update timestamp
     await ctx.runMutation(internal.threads.touch, {
       threadId: args.threadId,
     });

@@ -95,12 +95,14 @@ export const saveResult = internalMutation({
         })
       ),
     }),
+    promptVersion: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const now = Date.now();
     await ctx.db.patch("visionAnalysis", args.analysisId, {
       status: "completed",
       analysisResult: args.result,
+      promptVersion: args.promptVersion,
       updatedAt: now,
       completedAt: now,
     });
