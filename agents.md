@@ -20,3 +20,7 @@ Important: only add advice, leassons, and learnings that can apply across many p
 **Specify interface, not implementation** — Give agents the function signatures, types, and test cases, but let them write the implementation
 **Account for auto-generated files** — Note which files will be auto-regenerated and whether they need committing
 **Include git operations in steps** — Specify rename vs delete+create, and note when staging order matters
+
+### Performance
+
+**Avoid full table scans** — When planning queries, never use `.collect()` followed by JS filtering when an index can narrow the result set first. Plans that introduce new queries or filters should specify which index to use (or add one). Full table scans hide behind innocent-looking code (`db.query("table").collect()`) but degrade linearly with table size. Always prefer `.withIndex()` with `.filter()` or `.take(n)` over scan-and-filter in application code.
