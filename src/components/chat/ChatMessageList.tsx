@@ -126,6 +126,19 @@ export function ChatMessageList({ messages, isWaiting }: ChatMessageListProps) {
   );
 }
 
+function formatToolLabel(name: string, argsSummary: string): string {
+  switch (name) {
+    case "get_recipe":
+      return argsSummary ? `Fetching recipe ${argsSummary}` : "Fetching recipe...";
+    case "list_recipes":
+      return argsSummary ? `Filtering for "${argsSummary}"` : "Listing recipes...";
+    case "search_recipes":
+      return argsSummary ? `Searching for "${argsSummary}"` : "Searching recipes...";
+    default:
+      return argsSummary ? `Running with "${argsSummary}"` : "Running...";
+  }
+}
+
 function ToolCallCard({
   name,
   argsSummary,
@@ -145,7 +158,7 @@ function ToolCallCard({
         <div className="flex items-center gap-2">
           <Badge variant="secondary">{name}</Badge>
           <span className="text-xs text-muted-foreground truncate">
-            {argsSummary ? `Searching for "${argsSummary}"` : "Running..."}
+            {formatToolLabel(name, argsSummary)}
           </span>
         </div>
         {resultSummary && (
