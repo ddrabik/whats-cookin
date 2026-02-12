@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "~/components/ui/button";
@@ -20,11 +21,18 @@ function ChatEmptyState() {
   const navigate = useNavigate();
   const createThread = useMutation(api.threads.create);
   const sendMessage = useMutation(api.messages.send);
+  const [isPending, setIsPending] = useState(false);
 
   const handlePrompt = async (text: string) => {
-    const threadId = await createThread({ title: text.slice(0, 50) });
-    await sendMessage({ threadId, content: text });
-    void navigate({ to: "/chat/$threadId", params: { threadId } });
+    if (isPending) return;
+    setIsPending(true);
+    try {
+      const threadId = await createThread({ title: text.slice(0, 50) });
+      await sendMessage({ threadId, content: text });
+      void navigate({ to: "/chat/$threadId", params: { threadId } });
+    } finally {
+      setIsPending(false);
+    }
   };
 
   return (
@@ -46,6 +54,7 @@ function ChatEmptyState() {
                   key={idea.text}
                   variant="outline"
                   className="h-auto p-4 text-left justify-start gap-3"
+                  disabled={isPending}
                   onClick={() => void handlePrompt(idea.text)}
                 >
                   <Icon className="h-5 w-5 flex-shrink-0 text-muted-foreground" />
@@ -58,6 +67,7 @@ function ChatEmptyState() {
       </div>
       <ChatInput
         onSend={(text) => void handlePrompt(text)}
+        disabled={isPending}
         placeholder="Ask me anything about your recipes..."
       />
     </div>
