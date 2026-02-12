@@ -1,0 +1,276 @@
+"use node";
+
+import OpenAI from "openai";
+import type {
+  ChatCompletionMessageParam,
+  ChatCompletionTool,
+} from "openai/resources/chat/completions";
+import { v } from "convex/values";
+import { internal } from "./_generated/api";
+import { internalAction } from "./_generated/server";
+import { CHAT_SYSTEM_PROMPT, promptTag } from "./prompts";
+
+const MAX_TOOL_CALL_ITERATIONS = 10;
+
+// ---- Types for DB messages ----
+interface DbMessage {
+  role: "user" | "assistant" | "tool";
+  content: string;
+  toolCalls?: Array<{ id: string; name: string; arguments: string }>;
+  toolCallId?: string;
+}
+
+// ---- Pure functions (exported for testing) ----
+
+export function convertToOpenAIMessage(msg: DbMessage): ChatCompletionMessageParam {
+  if (msg.role === "user") {
+    return { role: "user", content: msg.content };
+  }
+  if (msg.role === "tool") {
+    return { role: "tool", content: msg.content, tool_call_id: msg.toolCallId! };
+  }
+  // assistant
+  if (msg.toolCalls && msg.toolCalls.length > 0) {
+    return {
+      role: "assistant",
+      content: msg.content,
+      tool_calls: msg.toolCalls.map((tc) => ({
+        id: tc.id,
+        type: "function" as const,
+        function: { name: tc.name, arguments: tc.arguments },
+      })),
+    };
+  }
+  return { role: "assistant", content: msg.content };
+}
+
+export function parseToolArguments(argsStr: string): Record<string, unknown> {
+  return JSON.parse(argsStr) as Record<string, unknown>;
+}
+
+// ---- Tool definitions ----
+const tools: ChatCompletionTool[] = [
+  {
+    type: "function",
+    function: {
+      name: "search_recipes",
+      description: "Search the user's recipe collection by keyword. Searches recipe titles, ingredients, and meal types.",
+      parameters: {
+        type: "object",
+        properties: {
+          query: { type: "string", description: "Search query to find recipes" },
+        },
+        required: ["query"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "list_recipes",
+      description: "List recipes from the user's collection, optionally filtered by meal type.",
+      parameters: {
+        type: "object",
+        properties: {
+          mealType: {
+            type: "string",
+            enum: ["breakfast", "lunch", "dinner", "snack", "dessert"],
+            description: "Filter by meal type",
+          },
+          limit: { type: "number", description: "Maximum number of recipes to return" },
+        },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "get_recipe",
+      description: "Get full details of a specific recipe by its ID.",
+      parameters: {
+        type: "object",
+        properties: {
+          id: { type: "string", description: "The recipe ID" },
+        },
+        required: ["id"],
+      },
+    },
+  },
+];
+
+// ---- Main action ----
+export const respond = internalAction({
+  args: { threadId: v.id("threads") },
+  handler: async (ctx, args) => {
+    try {
+    // 1. Record which prompt version is being used
+    await ctx.runMutation(internal.threads.setPromptVersion, {
+      threadId: args.threadId,
+      promptVersion: promptTag(CHAT_SYSTEM_PROMPT),
+    });
+
+    // 2. Load message history
+    const messages = await ctx.runQuery(internal.messages.listInternal, {
+      threadId: args.threadId,
+    });
+
+    // 3. Convert to OpenAI format
+    const openaiMessages: ChatCompletionMessageParam[] = [
+      { role: "system", content: CHAT_SYSTEM_PROMPT.content },
+      ...messages.map((m) =>
+        convertToOpenAIMessage({
+          role: m.role,
+          content: m.content,
+          toolCalls: m.toolCalls,
+          toolCallId: m.toolCallId,
+        })
+      ),
+    ];
+
+    // 4. Initialize OpenAI
+    const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+    // 5. Call OpenAI in a loop (handles tool calls)
+    let continueLoop = true;
+    let toolCallLoopCount = 0;
+    while (continueLoop) {
+      if (toolCallLoopCount >= MAX_TOOL_CALL_ITERATIONS) {
+        await ctx.runMutation(internal.messages.saveAssistant, {
+          threadId: args.threadId,
+          content:
+            "I'm sorry, I wasn't able to finish processing your request — I reached the limit on tool calls. Please try rephrasing or breaking your question into smaller parts.",
+        });
+        break;
+      }
+      toolCallLoopCount++;
+      const completion = await openai.chat.completions.create({
+        model: "gpt-4.1-mini",
+        messages: openaiMessages,
+        tools,
+      });
+
+      const choice = completion.choices[0];
+      const responseMessage = choice.message;
+
+      const functionCalls = responseMessage.tool_calls?.filter(
+        (tc): tc is Extract<typeof tc, { type: "function" }> =>
+          tc.type === "function"
+      );
+
+      if (functionCalls && functionCalls.length > 0) {
+        // Save assistant message with tool calls
+        const toolCallsForDb = functionCalls.map((tc) => ({
+          id: tc.id,
+          name: tc.function.name,
+          arguments: tc.function.arguments,
+        }));
+
+        await ctx.runMutation(internal.messages.saveAssistant, {
+          threadId: args.threadId,
+          content: responseMessage.content ?? "",
+          toolCalls: toolCallsForDb,
+        });
+
+        // Add assistant message to conversation
+        openaiMessages.push({
+          role: "assistant",
+          content: responseMessage.content ?? "",
+          tool_calls: functionCalls.map((tc) => ({
+            id: tc.id,
+            type: "function" as const,
+            function: { name: tc.function.name, arguments: tc.function.arguments },
+          })),
+        });
+
+        // Execute each tool call
+        for (const toolCall of functionCalls) {
+          let result: string;
+          try {
+            const toolArgs = parseToolArguments(toolCall.function.arguments);
+            result = await executeTool(ctx, toolCall.function.name, toolArgs);
+          } catch (error) {
+            result = JSON.stringify({
+              error: `Failed to execute tool: ${error instanceof Error ? error.message : "Unknown error"}`,
+            });
+          }
+
+          // Save tool result to DB
+          await ctx.runMutation(internal.messages.saveTool, {
+            threadId: args.threadId,
+            content: result,
+            toolCallId: toolCall.id,
+          });
+
+          // Add tool result to conversation
+          openaiMessages.push({
+            role: "tool",
+            content: result,
+            tool_call_id: toolCall.id,
+          });
+        }
+        // Continue the loop to get the final response
+      } else {
+        // Plain text response — save and exit
+        await ctx.runMutation(internal.messages.saveAssistant, {
+          threadId: args.threadId,
+          content: responseMessage.content ?? "",
+        });
+        continueLoop = false;
+      }
+    }
+
+    // 6. Touch the thread to update timestamp
+    await ctx.runMutation(internal.threads.touch, {
+      threadId: args.threadId,
+    });
+    } catch (error) {
+      console.error("chat.respond failed:", error);
+      await ctx.runMutation(internal.messages.saveAssistant, {
+        threadId: args.threadId,
+        content:
+          "Sorry, something went wrong while processing your message. Please try again.",
+      });
+    }
+  },
+});
+
+// ---- Tool execution ----
+async function executeTool(
+  ctx: any,
+  name: string,
+  args: Record<string, unknown>
+): Promise<string> {
+  switch (name) {
+    case "search_recipes": {
+      const query = typeof args.query === "string" ? args.query : "";
+      const results = await ctx.runQuery(internal.recipes.searchInternal, {
+        query,
+      });
+      return JSON.stringify(results);
+    }
+    case "list_recipes": {
+      const mealType =
+        typeof args.mealType === "string" ? args.mealType : undefined;
+      const limit =
+        typeof args.limit === "number" && args.limit > 0
+          ? args.limit
+          : undefined;
+      const results = await ctx.runQuery(internal.recipes.listInternal, {
+        mealType,
+        limit,
+      });
+      return JSON.stringify(results);
+    }
+    case "get_recipe": {
+      if (typeof args.id !== "string" || !args.id) {
+        return JSON.stringify({ error: "Missing required field: id" });
+      }
+      const result = await ctx.runQuery(internal.recipes.getInternal, {
+        id: args.id,
+      });
+      return JSON.stringify(result ?? { error: "Recipe not found" });
+    }
+    default:
+      return JSON.stringify({ error: `Unknown tool: ${name}` });
+  }
+}

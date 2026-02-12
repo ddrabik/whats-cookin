@@ -123,6 +123,8 @@ export default defineSchema({
     // Retry tracking
     retryCount: v.number(),
     maxRetries: v.number(),
+    // Prompt version tracking
+    promptVersion: v.optional(v.string()),
     // Timestamps
     createdAt: v.number(),
     updatedAt: v.number(),
@@ -131,4 +133,26 @@ export default defineSchema({
     .index("by_uploadId", ["uploadId"])
     .index("by_status", ["status"])
     .index("by_recipeId", ["recipeId"]),
+
+  threads: defineTable({
+    title: v.string(),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+    promptVersion: v.optional(v.string()),
+  }).index("by_updatedAt", ["updatedAt"]),
+
+  messages: defineTable({
+    threadId: v.id("threads"),
+    role: v.union(v.literal("user"), v.literal("assistant"), v.literal("tool")),
+    content: v.string(),
+    toolCalls: v.optional(v.array(v.object({
+      id: v.string(),
+      name: v.string(),
+      arguments: v.string(),
+    }))),
+    toolCallId: v.optional(v.string()),
+    createdAt: v.number(),
+  })
+    .index("by_threadId", ["threadId"])
+    .index("by_threadId_createdAt", ["threadId", "createdAt"]),
 });

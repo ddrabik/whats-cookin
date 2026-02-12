@@ -10,10 +10,10 @@ import {
   ERROR_CODES,
   MAX_TOKENS,
   OPENAI_MODEL,
-  RECIPE_ANALYSIS_PROMPT,
   RECIPE_CONFIDENCE_THRESHOLD,
 } from "./constants";
 import type { ErrorCode } from "./constants";
+import { RECIPE_ANALYSIS_PROMPT, promptTag } from "../prompts";
 
 /**
  * Result structure from OpenAI analysis
@@ -95,6 +95,7 @@ export const analyzeUpload = internalAction({
       await ctx.runMutation(internal.vision.mutations.saveResult, {
         analysisId: args.analysisId,
         result: finalResult,
+        promptVersion: promptTag(RECIPE_ANALYSIS_PROMPT),
       });
     } catch (error) {
       // Handle and categorize errors
@@ -117,7 +118,7 @@ async function analyzeImage(openai: OpenAI, imageUrl: string): Promise<AnalysisR
       {
         role: "user",
         content: [
-          { type: "text", text: RECIPE_ANALYSIS_PROMPT },
+          { type: "text", text: RECIPE_ANALYSIS_PROMPT.content },
           {
             type: "image_url",
             image_url: {

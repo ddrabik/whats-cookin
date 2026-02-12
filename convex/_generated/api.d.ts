@@ -8,9 +8,13 @@
  * @module
  */
 
+import type * as chat from "../chat.js";
 import type * as http from "../http.js";
+import type * as messages from "../messages.js";
+import type * as prompts from "../prompts.js";
 import type * as recipePipeline from "../recipePipeline.js";
 import type * as recipes from "../recipes.js";
+import type * as threads from "../threads.js";
 import type * as uploads_actions from "../uploads/actions.js";
 import type * as uploads_constants from "../uploads/constants.js";
 import type * as uploads_mutations from "../uploads/mutations.js";
@@ -28,9 +32,13 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  chat: typeof chat;
   http: typeof http;
+  messages: typeof messages;
+  prompts: typeof prompts;
   recipePipeline: typeof recipePipeline;
   recipes: typeof recipes;
+  threads: typeof threads;
   "uploads/actions": typeof uploads_actions;
   "uploads/constants": typeof uploads_constants;
   "uploads/mutations": typeof uploads_mutations;
