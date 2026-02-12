@@ -19,13 +19,18 @@ export const list = query({
 });
 
 export const listInternal = internalQuery({
-  args: { threadId: v.id("threads") },
+  args: {
+    threadId: v.id("threads"),
+    limit: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
-    return await ctx.db
+    const limit = args.limit ?? 50;
+    const recent = await ctx.db
       .query("messages")
       .withIndex("by_threadId_createdAt", (q) => q.eq("threadId", args.threadId))
-      .order("asc")
-      .collect();
+      .order("desc")
+      .take(limit);
+    return recent.reverse();
   },
 });
 
