@@ -244,21 +244,31 @@ async function executeTool(
 ): Promise<string> {
   switch (name) {
     case "search_recipes": {
+      const query = typeof args.query === "string" ? args.query : "";
       const results = await ctx.runQuery(internal.recipes.searchInternal, {
-        query: (args.query as string) ?? "",
+        query,
       });
       return JSON.stringify(results);
     }
     case "list_recipes": {
+      const mealType =
+        typeof args.mealType === "string" ? args.mealType : undefined;
+      const limit =
+        typeof args.limit === "number" && args.limit > 0
+          ? args.limit
+          : undefined;
       const results = await ctx.runQuery(internal.recipes.listInternal, {
-        mealType: args.mealType as string | undefined,
-        limit: args.limit as number | undefined,
+        mealType,
+        limit,
       });
       return JSON.stringify(results);
     }
     case "get_recipe": {
+      if (typeof args.id !== "string" || !args.id) {
+        return JSON.stringify({ error: "Missing required field: id" });
+      }
       const result = await ctx.runQuery(internal.recipes.getInternal, {
-        id: args.id as string,
+        id: args.id,
       });
       return JSON.stringify(result ?? { error: "Recipe not found" });
     }
