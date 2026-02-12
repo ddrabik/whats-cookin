@@ -9,6 +9,8 @@ import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { internalAction } from "./_generated/server";
 
+const MAX_TOOL_CALL_ITERATIONS = 10;
+
 // ---- Types for DB messages ----
 interface DbMessage {
   role: "user" | "assistant" | "tool";
@@ -131,7 +133,17 @@ export const respond = internalAction({
 
     // 4. Call OpenAI in a loop (handles tool calls)
     let continueLoop = true;
+    let toolCallLoopCount = 0;
     while (continueLoop) {
+      if (toolCallLoopCount >= MAX_TOOL_CALL_ITERATIONS) {
+        await ctx.runMutation(internal.messages.saveAssistant, {
+          threadId: args.threadId,
+          content:
+            "I'm sorry, I wasn't able to finish processing your request — I reached the limit on tool calls. Please try rephrasing or breaking your question into smaller parts.",
+        });
+        break;
+      }
+      toolCallLoopCount++;
       const completion = await openai.chat.completions.create({
         model: "gpt-4.1-mini",
         messages: openaiMessages,
