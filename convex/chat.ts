@@ -110,6 +110,7 @@ const tools: ChatCompletionTool[] = [
 export const respond = internalAction({
   args: { threadId: v.id("threads") },
   handler: async (ctx, args) => {
+    try {
     // 1. Load message history
     const messages = await ctx.runQuery(internal.messages.listInternal, {
       threadId: args.threadId,
@@ -224,6 +225,14 @@ export const respond = internalAction({
     await ctx.runMutation(internal.threads.touch, {
       threadId: args.threadId,
     });
+    } catch (error) {
+      console.error("chat.respond failed:", error);
+      await ctx.runMutation(internal.messages.saveAssistant, {
+        threadId: args.threadId,
+        content:
+          "Sorry, something went wrong while processing your message. Please try again.",
+      });
+    }
   },
 });
 
