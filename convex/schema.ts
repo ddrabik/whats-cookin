@@ -24,6 +24,8 @@ export default defineSchema({
     uploadDate: v.number(),
     // Optional: Client user agent for tracking
     uploadSource: v.optional(v.string()),
+    // Optional: Original recipe URL when imported from website
+    sourceUrl: v.optional(v.string()),
   })
     .index("by_storageId", ["storageId"])
     .index("by_uploadDate", ["uploadDate"])

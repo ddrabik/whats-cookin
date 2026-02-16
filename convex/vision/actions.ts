@@ -7,13 +7,20 @@ import { v } from "convex/values";
 import { internal } from "../_generated/api";
 import { internalAction } from "../_generated/server";
 import {
+  RECIPE_ANALYSIS_PROMPT,
+  RECIPE_HTML_ANALYSIS_PROMPT,
+  promptTag,
+} from "../prompts";
+import {
   ERROR_CODES,
   MAX_TOKENS,
   OPENAI_MODEL,
   RECIPE_CONFIDENCE_THRESHOLD,
 } from "./constants";
+import type { Prompt } from "../prompts";
 import type { ErrorCode } from "./constants";
-import { RECIPE_ANALYSIS_PROMPT, promptTag } from "../prompts";
+
+const MAX_HTML_INPUT_CHARS = 120_000;
 
 /**
  * Result structure from OpenAI analysis
@@ -69,8 +76,12 @@ export const analyzeUpload = internalAction({
 
       // Analyze based on content type
       let result: AnalysisResult;
+      let prompt: Prompt = RECIPE_ANALYSIS_PROMPT;
       if (args.contentType.startsWith("image/")) {
         result = await analyzeImage(openai, storageUrl);
+      } else if (args.contentType === "text/html") {
+        result = await analyzeHtml(openai, storageUrl);
+        prompt = RECIPE_HTML_ANALYSIS_PROMPT;
       } else {
         throw createError(
           ERROR_CODES.INVALID_FORMAT,
@@ -95,7 +106,7 @@ export const analyzeUpload = internalAction({
       await ctx.runMutation(internal.vision.mutations.saveResult, {
         analysisId: args.analysisId,
         result: finalResult,
-        promptVersion: promptTag(RECIPE_ANALYSIS_PROMPT),
+        promptVersion: promptTag(prompt),
       });
     } catch (error) {
       // Handle and categorize errors
@@ -138,6 +149,53 @@ async function analyzeImage(openai: OpenAI, imageUrl: string): Promise<AnalysisR
   }
 
   return parseAnalysisResponse(content);
+}
+
+/**
+ * Analyze recipe HTML using the Responses API.
+ */
+async function analyzeHtml(openai: OpenAI, htmlUrl: string): Promise<AnalysisResult> {
+  const htmlResponse = await fetch(htmlUrl);
+  if (!htmlResponse.ok) {
+    throw createError(
+      ERROR_CODES.INVALID_FORMAT,
+      `Failed to fetch stored HTML: ${htmlResponse.status}`,
+      true
+    );
+  }
+
+  const rawHtml = await htmlResponse.text();
+  if (!rawHtml.trim()) {
+    throw createError(ERROR_CODES.INVALID_FORMAT, "Stored HTML is empty", false);
+  }
+
+  const preparedHtml = prepareHtmlForModel(rawHtml);
+
+  const response = await openai.responses.create({
+    model: OPENAI_MODEL,
+    instructions: RECIPE_HTML_ANALYSIS_PROMPT.content,
+    input: `Extract recipe information from this HTML document:\n\n${preparedHtml}`,
+    max_output_tokens: MAX_TOKENS,
+  });
+
+  const content = response.output_text.trim();
+  if (!content) {
+    throw createError(ERROR_CODES.PARSE_ERROR, "No content in OpenAI response", true);
+  }
+
+  return parseAnalysisResponse(content);
+}
+
+function prepareHtmlForModel(html: string): string {
+  const withoutScripts = html.replace(/<script[\s\S]*?<\/script>/gi, " ");
+  const withoutStyles = withoutScripts.replace(/<style[\s\S]*?<\/style>/gi, " ");
+  const normalized = withoutStyles.trim();
+
+  if (normalized.length <= MAX_HTML_INPUT_CHARS) {
+    return normalized;
+  }
+
+  return normalized.slice(0, MAX_HTML_INPUT_CHARS);
 }
 
 /**

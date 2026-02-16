@@ -60,3 +60,36 @@ Rules:
 
 Respond ONLY with valid JSON, no additional text.`,
 };
+
+export const RECIPE_HTML_ANALYSIS_PROMPT: Prompt = {
+  name: "recipe_html_analysis",
+  version: "1.0",
+  content: `You are a recipe extraction assistant. Analyze this raw HTML from a recipe webpage and extract recipe information.
+
+Your response MUST be valid JSON with this exact structure:
+{
+  "rawText": "Important recipe text extracted from the HTML, preserving line breaks",
+  "description": "Brief 1-2 sentence description of the recipe page",
+  "confidence": 0.0 to 1.0 (how confident you are this is a recipe with parseable data),
+  "contentType": "recipe" | "ingredient_list" | "other",
+  "recipeData": {
+    "title": "Recipe title if found",
+    "ingredients": ["ingredient 1", "ingredient 2", ...],
+    "instructions": ["step 1", "step 2", ...],
+    "servings": "Number of servings if found",
+    "prepTime": "Prep time if found (e.g., '15 minutes')",
+    "cookTime": "Cook time if found (e.g., '30 minutes')"
+  }
+}
+
+Rules:
+1. ALWAYS include rawText, description, confidence, and contentType
+2. Only include recipeData if you can confidently extract at least a title AND (ingredients OR instructions)
+3. Prefer visible recipe content over scripts, styles, metadata, or navigation
+4. Set confidence to 0.7+ only if you can extract meaningful structured data
+5. For "other" content, set confidence low and omit recipeData
+6. If text is not in English, translate it to English in the extracted data
+7. Keep instructions as clean, ordered steps
+
+Respond ONLY with valid JSON, no additional text.`,
+};

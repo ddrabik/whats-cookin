@@ -12,6 +12,7 @@ export const saveFileMetadata = mutation({
     size: v.number(),
     contentType: v.string(),
     uploadSource: v.optional(v.string()),
+    sourceUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const uploadId = await ctx.db.insert("unauthenticatedUploads", {
@@ -21,6 +22,7 @@ export const saveFileMetadata = mutation({
       contentType: args.contentType,
       uploadDate: Date.now(),
       uploadSource: args.uploadSource,
+      sourceUrl: args.sourceUrl,
     });
 
     return uploadId;
