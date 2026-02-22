@@ -264,6 +264,10 @@ async function buildRecipeFromAnalysis(
   // Determine meal type (use override or try to infer, default to lunch)
   const mealType = overrides?.mealType ?? inferMealType(recipeData) ?? "lunch";
 
+  // Preserve original website URL for URL imports when available.
+  const upload = await ctx.db.get("unauthenticatedUploads", analysis.uploadId);
+  const source = upload?.sourceUrl ?? "Vision Analysis";
+
   // Create the recipe
   const recipeId = await ctx.db.insert("recipes", {
     title: overrides?.title ?? recipeData.title ?? "Untitled Recipe",
@@ -271,7 +275,7 @@ async function buildRecipeFromAnalysis(
     cookTime: recipeData.cookTime ?? "Unknown",
     cookTimeMinutes,
     isFavorite: false,
-    source: "Vision Analysis",
+    source,
     imageUrl,
     createdAt: Date.now(),
     ingredients,
