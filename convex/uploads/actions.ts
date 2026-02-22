@@ -37,7 +37,7 @@ function jsonResponse(
   })
 }
 
-function buildHtmlFilename(url: URL) {
+export function buildHtmlFilename(url: URL) {
   const leaf = url.pathname.split('/').filter(Boolean).pop() || 'recipe'
   const safeLeaf = leaf.replace(/[^a-zA-Z0-9-_]+/g, '-').replace(/^-+|-+$/g, '') || 'recipe'
   const safeHost = url.hostname.replace(/[^a-zA-Z0-9.-]+/g, '')
@@ -246,7 +246,7 @@ export const handleUrlUpload = httpAction(async (ctx, request) => {
     let analysisId: Id<'visionAnalysis'> | null = null
     try {
       analysisId = await ctx.runMutation(
-        api.vision.mutations.triggerAnalysis,
+        api.vision.mutations.triggerHtmlAnalysis,
         { uploadId },
       )
     } catch (analysisError) {

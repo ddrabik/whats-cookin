@@ -17,10 +17,9 @@ import {
   OPENAI_MODEL,
   RECIPE_CONFIDENCE_THRESHOLD,
 } from "./constants";
-import type { Prompt } from "../prompts";
 import type { ErrorCode } from "./constants";
 
-const MAX_HTML_INPUT_CHARS = 120_000;
+export const MAX_HTML_INPUT_CHARS = 120_000;
 
 /**
  * Result structure from OpenAI analysis
@@ -51,70 +50,54 @@ export const analyzeUpload = internalAction({
     contentType: v.string(),
   },
   handler: async (ctx, args) => {
-    // Mark as processing
-    await ctx.runMutation(internal.vision.mutations.markProcessing, {
-      analysisId: args.analysisId,
-    });
-
+    await markAnalysisProcessing(ctx, args.analysisId);
     try {
-      // Get the storage URL for the file
-      const storageUrl = await ctx.storage.getUrl(args.storageId);
-      if (!storageUrl) {
-        throw createError(ERROR_CODES.INVALID_FORMAT, "Could not get storage URL", false);
-      }
-
-      // Initialize OpenAI client
-      // Validate API key before initializing client
-      if (!process.env.OPENAI_API_KEY) {
-        throw createError(ERROR_CODES.API_KEY_INVALID, "OPENAI_API_KEY not configured", false);
-      }
-
-      // Initialize OpenAI client
-      const openai = new OpenAI({
-        apiKey: process.env.OPENAI_API_KEY,
-      });
-
-      // Analyze based on content type
-      let result: AnalysisResult;
-      let prompt: Prompt = RECIPE_ANALYSIS_PROMPT;
-      if (args.contentType.startsWith("image/")) {
-        result = await analyzeImage(openai, storageUrl);
-      } else if (args.contentType === "text/html") {
-        result = await analyzeHtml(openai, storageUrl);
-        prompt = RECIPE_HTML_ANALYSIS_PROMPT;
-      } else {
+      if (!args.contentType.startsWith("image/")) {
         throw createError(
           ERROR_CODES.INVALID_FORMAT,
-          `Unsupported content type: ${args.contentType}`,
+          `Unsupported OCR content type: ${args.contentType}`,
           false
         );
       }
 
-      // Filter out recipeData if confidence is below threshold
-      const finalResult: AnalysisResult = {
-        rawText: result.rawText,
-        description: result.description,
-        confidence: result.confidence,
-        contentType: result.contentType,
-      };
-
-      if (result.confidence >= RECIPE_CONFIDENCE_THRESHOLD && result.recipeData) {
-        finalResult.recipeData = result.recipeData;
-      }
-
-      // Save successful result
-      await ctx.runMutation(internal.vision.mutations.saveResult, {
-        analysisId: args.analysisId,
-        result: finalResult,
-        promptVersion: promptTag(prompt),
-      });
+      const storageUrl = await getStorageUrlOrThrow(ctx, args.storageId);
+      const openai = createOpenAIClient();
+      const result = await analyzeImage(openai, storageUrl);
+      await saveSuccessfulResult(
+        ctx,
+        args.analysisId,
+        result,
+        promptTag(RECIPE_ANALYSIS_PROMPT)
+      );
     } catch (error) {
-      // Handle and categorize errors
-      const errorInfo = categorizeError(error);
-      await ctx.runMutation(internal.vision.mutations.markFailed, {
-        analysisId: args.analysisId,
-        error: errorInfo,
-      });
+      await markAnalysisFailed(ctx, args.analysisId, error);
+    }
+  },
+});
+
+/**
+ * Internal action to analyze URL-imported HTML using the Responses API.
+ * Kept separate from OCR/image path so URL fallback can evolve independently.
+ */
+export const analyzeHtmlUpload = internalAction({
+  args: {
+    analysisId: v.id("visionAnalysis"),
+    storageId: v.id("_storage"),
+  },
+  handler: async (ctx, args) => {
+    await markAnalysisProcessing(ctx, args.analysisId);
+    try {
+      const storageUrl = await getStorageUrlOrThrow(ctx, args.storageId);
+      const openai = createOpenAIClient();
+      const result = await analyzeHtml(openai, storageUrl);
+      await saveSuccessfulResult(
+        ctx,
+        args.analysisId,
+        result,
+        promptTag(RECIPE_HTML_ANALYSIS_PROMPT)
+      );
+    } catch (error) {
+      await markAnalysisFailed(ctx, args.analysisId, error);
     }
   },
 });
@@ -186,7 +169,7 @@ async function analyzeHtml(openai: OpenAI, htmlUrl: string): Promise<AnalysisRes
   return parseAnalysisResponse(content);
 }
 
-function prepareHtmlForModel(html: string): string {
+export function prepareHtmlForModel(html: string): string {
   const withoutScripts = html.replace(/<script[\s\S]*?<\/script>/gi, " ");
   const withoutStyles = withoutScripts.replace(/<style[\s\S]*?<\/style>/gi, " ");
   const normalized = withoutStyles.trim();
@@ -196,6 +179,71 @@ function prepareHtmlForModel(html: string): string {
   }
 
   return normalized.slice(0, MAX_HTML_INPUT_CHARS);
+}
+
+async function markAnalysisProcessing(
+  ctx: any,
+  analysisId: any
+) {
+  await ctx.runMutation(internal.vision.mutations.markProcessing, { analysisId });
+}
+
+function createOpenAIClient(): OpenAI {
+  if (!process.env.OPENAI_API_KEY) {
+    throw createError(ERROR_CODES.API_KEY_INVALID, "OPENAI_API_KEY not configured", false);
+  }
+
+  return new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+}
+
+async function getStorageUrlOrThrow(
+  ctx: any,
+  storageId: any
+): Promise<string> {
+  const storageUrl = await ctx.storage.getUrl(storageId);
+  if (!storageUrl) {
+    throw createError(ERROR_CODES.INVALID_FORMAT, "Could not get storage URL", false);
+  }
+  return storageUrl;
+}
+
+async function saveSuccessfulResult(
+  ctx: any,
+  analysisId: any,
+  result: AnalysisResult,
+  promptVersion: string
+) {
+  // Filter out recipeData if confidence is below threshold.
+  const finalResult: AnalysisResult = {
+    rawText: result.rawText,
+    description: result.description,
+    confidence: result.confidence,
+    contentType: result.contentType,
+  };
+
+  if (result.confidence >= RECIPE_CONFIDENCE_THRESHOLD && result.recipeData) {
+    finalResult.recipeData = result.recipeData;
+  }
+
+  await ctx.runMutation(internal.vision.mutations.saveResult, {
+    analysisId,
+    result: finalResult,
+    promptVersion,
+  });
+}
+
+async function markAnalysisFailed(
+  ctx: any,
+  analysisId: any,
+  error: unknown
+) {
+  const errorInfo = categorizeError(error);
+  await ctx.runMutation(internal.vision.mutations.markFailed, {
+    analysisId,
+    error: errorInfo,
+  });
 }
 
 /**
