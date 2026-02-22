@@ -138,3 +138,54 @@ export const getPendingRecipes = query({
     return pendingWithDetails.filter((item) => item !== null);
   },
 });
+
+/**
+ * Gets recent failed imports with upload context for cookbook error alerts.
+ * Uses the status index so the alert feed doesn't require scanning all analyses.
+ */
+export const getRecentFailedImports = query({
+  args: {
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 10;
+
+    const failedAnalyses = await ctx.db
+      .query("visionAnalysis")
+      .withIndex("by_status", (q) => q.eq("status", "failed"))
+      .order("desc")
+      .take(limit);
+
+    const failures = await Promise.all(
+      failedAnalyses.map(async (analysis) => {
+        const upload = await ctx.db.get("unauthenticatedUploads", analysis.uploadId);
+        if (!upload || !analysis.error) {
+          return null;
+        }
+
+        const isUrlImport =
+          upload.contentType === "text/html" || typeof upload.sourceUrl === "string";
+        const isRecipeCreationFailure = analysis.error.code === "RECIPE_PIPELINE_ERROR";
+
+        const importPath = isUrlImport ? "url" : "image";
+        const stage = isRecipeCreationFailure ? "recipe_creation" : "analysis";
+
+        return {
+          analysisId: analysis._id,
+          failedAt: analysis.updatedAt,
+          uploadDate: upload.uploadDate,
+          filename: upload.filename,
+          contentType: upload.contentType,
+          sourceUrl: upload.sourceUrl,
+          retryCount: analysis.retryCount,
+          maxRetries: analysis.maxRetries,
+          error: analysis.error,
+          importPath,
+          stage,
+        };
+      })
+    );
+
+    return failures.filter((failure) => failure !== null);
+  },
+});

@@ -1,9 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation } from "convex/react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import {
+  AlertTriangle,
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
@@ -96,6 +97,64 @@ export const Route = createFileRoute("/cookbook")({
 type SortField = "createdAt" | "cookTime";
 type SortDirection = "asc" | "desc";
 
+const DISMISSED_IMPORT_FAILURES_STORAGE_KEY = "cookbook.dismissedImportFailures";
+
+function readDismissedImportFailures(): Array<string> {
+  if (typeof window === "undefined") return [];
+  try {
+    const raw = window.localStorage.getItem(DISMISSED_IMPORT_FAILURES_STORAGE_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed.filter((id): id is string => typeof id === "string") : [];
+  } catch {
+    return [];
+  }
+}
+
+function writeDismissedImportFailures(ids: Array<string>) {
+  if (typeof window === "undefined") return;
+  try {
+    window.localStorage.setItem(
+      DISMISSED_IMPORT_FAILURES_STORAGE_KEY,
+      JSON.stringify(ids.slice(-100))
+    );
+  } catch {
+    // Best-effort persistence only.
+  }
+}
+
+function getImportFailureTitle(failure: {
+  importPath: string;
+  stage: string;
+}) {
+  if (failure.importPath === "url") {
+    return failure.stage === "recipe_creation"
+      ? "URL import failed while creating the recipe"
+      : "URL import failed during HTML analysis";
+  }
+
+  return failure.stage === "recipe_creation"
+    ? "Image import failed while creating the recipe"
+    : "Image import failed during image analysis";
+}
+
+function getImportFailureClue(failure: {
+  importPath: string;
+  stage: string;
+  sourceUrl?: string;
+  filename: string;
+  retryCount: number;
+  maxRetries: number;
+}) {
+  const action = failure.importPath === "url" ? "importing a recipe from a URL" : "uploading a recipe image";
+  const stageLabel = failure.stage === "recipe_creation" ? "recipe creation" : "analysis";
+  const sourceDetail =
+    failure.importPath === "url" && failure.sourceUrl
+      ? failure.sourceUrl
+      : failure.filename;
+  return `This happened after ${action}. It failed in ${stageLabel} (${failure.retryCount}/${failure.maxRetries} attempts) for ${sourceDetail}.`;
+}
+
 function CookbookPage() {
   const navigate = useNavigate();
   const [categoryFilter, setCategoryFilter] = useState<MealTypeFilter>("all");
@@ -105,6 +164,8 @@ function CookbookPage() {
   const [selectedRecipe, setSelectedRecipe] = useState<Recipe | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [dismissedImportFailureIds, setDismissedImportFailureIds] = useState<Array<string>>([]);
+  const [dismissedImportFailuresHydrated, setDismissedImportFailuresHydrated] = useState(false);
   const debouncedSearchQuery = useDebounce(searchQuery, 100);
   const modalTitleRef = useRef<HTMLHeadingElement>(null);
 
@@ -123,9 +184,23 @@ function CookbookPage() {
     convexQuery(api.vision.queries.getPendingRecipes, {})
   );
 
+  const { data: recentFailedImports = [] } = useSuspenseQuery(
+    convexQuery(api.vision.queries.getRecentFailedImports, { limit: 10 })
+  );
+
   // Mutations for toggling favorites and deleting
   const toggleFavoriteMutation = useMutation(api.recipes.toggleFavorite);
   const deleteRecipeMutation = useMutation(api.recipes.remove);
+
+  useEffect(() => {
+    setDismissedImportFailureIds(readDismissedImportFailures());
+    setDismissedImportFailuresHydrated(true);
+  }, []);
+
+  useEffect(() => {
+    if (!dismissedImportFailuresHydrated) return;
+    writeDismissedImportFailures(dismissedImportFailureIds);
+  }, [dismissedImportFailureIds, dismissedImportFailuresHydrated]);
 
   const fuse = useMemo(() => createRecipeSearch(recipes), [recipes]);
 
@@ -220,6 +295,20 @@ function CookbookPage() {
 
   const formatDate = (timestamp: number) => {
     return new Date(timestamp).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+  };
+
+  const visibleImportFailures = useMemo(
+    () =>
+      recentFailedImports.filter(
+        (failure) => !dismissedImportFailureIds.includes(failure.analysisId)
+      ),
+    [recentFailedImports, dismissedImportFailureIds]
+  );
+
+  const dismissImportFailure = (analysisId: string) => {
+    setDismissedImportFailureIds((prev) => (
+      prev.includes(analysisId) ? prev : [...prev, analysisId]
+    ));
   };
 
   return (
@@ -394,6 +483,50 @@ function CookbookPage() {
 
           {/* Table */}
           <div className="flex-1 px-6 py-4 overflow-auto">
+            {dismissedImportFailuresHydrated && visibleImportFailures.length > 0 && (
+              <section className="mb-4 space-y-3" aria-label="Import errors">
+                <div className="flex items-center gap-2 text-sm font-medium text-destructive">
+                  <AlertTriangle className="h-4 w-4" />
+                  Import Errors
+                </div>
+                {visibleImportFailures.map((failure) => (
+                  <div
+                    key={failure.analysisId}
+                    className="relative rounded-lg border border-destructive/30 bg-destructive/5 p-4 pr-12"
+                  >
+                    <button
+                      type="button"
+                      onClick={() => dismissImportFailure(failure.analysisId)}
+                      className="absolute right-2 top-2 rounded-md p-1 text-muted-foreground hover:text-foreground hover:bg-background/80"
+                      aria-label="Dismiss import error"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
+                    <p className="text-sm font-semibold text-destructive">
+                      {getImportFailureTitle(failure)}
+                    </p>
+                    <p className="mt-1 text-sm text-foreground">
+                      {getImportFailureClue(failure)}
+                    </p>
+                    <p className="mt-2 text-xs text-muted-foreground">
+                      Failed {formatDate(failure.failedAt)} at{" "}
+                      {new Date(failure.failedAt).toLocaleTimeString("en-US", {
+                        hour: "numeric",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                    {failure.sourceUrl && (
+                      <p className="mt-2 text-xs text-muted-foreground break-all">
+                        URL: {failure.sourceUrl}
+                      </p>
+                    )}
+                    <p className="mt-2 rounded-md bg-background/70 border border-border px-3 py-2 text-xs font-mono break-words">
+                      {failure.error.message}
+                    </p>
+                  </div>
+                ))}
+              </section>
+            )}
             <Table>
               <TableHeader>
                 <TableRow>
