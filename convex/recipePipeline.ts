@@ -156,16 +156,31 @@ export const processCompletedAnalysis = internalMutation({
       return { skipped: true, reason: "No recipe data in analysis" };
     }
 
-    // Create recipe from analysis
-    const recipeId = await buildRecipeFromAnalysis(ctx, analysis);
+    try {
+      // Create recipe from analysis
+      const recipeId = await buildRecipeFromAnalysis(ctx, analysis);
 
-    // Mark analysis as processed
-    await ctx.db.patch("visionAnalysis", args.analysisId, {
-      recipeId,
-      recipeCreatedAt: Date.now(),
-    });
+      // Mark analysis as processed
+      await ctx.db.patch("visionAnalysis", args.analysisId, {
+        recipeId,
+        recipeCreatedAt: Date.now(),
+      });
 
-    return { success: true, recipeId };
+      return { success: true, recipeId };
+    } catch (error) {
+      await ctx.db.patch("visionAnalysis", args.analysisId, {
+        status: "failed",
+        error: {
+          code: "RECIPE_PIPELINE_ERROR",
+          message:
+            error instanceof Error ? error.message : "Unknown recipe creation error",
+          retryable: false,
+        },
+        updatedAt: Date.now(),
+      });
+
+      throw error;
+    }
   },
 });
 
