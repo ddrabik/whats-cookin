@@ -18,6 +18,11 @@ export const triggerAnalysis = mutation({
     if (!upload) {
       throw new Error("Upload not found");
     }
+    if (!upload.contentType.startsWith("image/")) {
+      throw new Error(
+        `triggerAnalysis supports image uploads only, got ${upload.contentType}`
+      );
+    }
 
     // Check if analysis already exists for this upload
     const existing = await ctx.db
@@ -48,6 +53,58 @@ export const triggerAnalysis = mutation({
         analysisId,
         storageId: upload.storageId,
         contentType: upload.contentType,
+      }
+    );
+
+    return analysisId;
+  },
+});
+
+/**
+ * Triggers HTML analysis for URL imports.
+ * Keeps URL fallback separate from OCR/image analysis path.
+ */
+export const triggerHtmlAnalysis = mutation({
+  args: {
+    uploadId: v.id("unauthenticatedUploads"),
+  },
+  handler: async (ctx, args) => {
+    const upload = await ctx.db.get("unauthenticatedUploads", args.uploadId);
+    if (!upload) {
+      throw new Error("Upload not found");
+    }
+    if (upload.contentType !== "text/html") {
+      throw new Error(
+        `triggerHtmlAnalysis supports text/html uploads only, got ${upload.contentType}`
+      );
+    }
+
+    const existing = await ctx.db
+      .query("visionAnalysis")
+      .withIndex("by_uploadId", (q) => q.eq("uploadId", args.uploadId))
+      .first();
+
+    if (existing) {
+      return existing._id;
+    }
+
+    const now = Date.now();
+    const analysisId = await ctx.db.insert("visionAnalysis", {
+      uploadId: args.uploadId,
+      storageId: upload.storageId,
+      status: "pending",
+      retryCount: 0,
+      maxRetries: MAX_RETRIES,
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    await ctx.scheduler.runAfter(
+      0,
+      internal.vision.actions.analyzeHtmlUpload,
+      {
+        analysisId,
+        storageId: upload.storageId,
       }
     );
 
@@ -155,11 +212,26 @@ export const markFailed = internalMutation({
       const upload = await ctx.db.get("unauthenticatedUploads", analysis.uploadId);
       const contentType = upload?.contentType ?? "application/octet-stream";
 
-      await ctx.scheduler.runAfter(delay, internal.vision.actions.analyzeUpload, {
-        analysisId: args.analysisId,
-        storageId: analysis.storageId,
-        contentType,
-      });
+      if (contentType === "text/html") {
+        await ctx.scheduler.runAfter(
+          delay,
+          internal.vision.actions.analyzeHtmlUpload,
+          {
+            analysisId: args.analysisId,
+            storageId: analysis.storageId,
+          }
+        );
+      } else {
+        await ctx.scheduler.runAfter(
+          delay,
+          internal.vision.actions.analyzeUpload,
+          {
+            analysisId: args.analysisId,
+            storageId: analysis.storageId,
+            contentType,
+          }
+        );
+      }
     }
   },
 });

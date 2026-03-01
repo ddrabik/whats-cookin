@@ -9,6 +9,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "~/components/ui/dialog";
+import { Input } from "~/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs";
 
 interface AddRecipeModalProps {
@@ -82,6 +83,7 @@ export function AddRecipeModal({ open, onOpenChange }: AddRecipeModalProps) {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
+  const [recipeUrl, setRecipeUrl] = useState("");
 
   const handleFileSelect = (file: File | null) => {
     if (!file) {
@@ -203,8 +205,78 @@ export function AddRecipeModal({ open, onOpenChange }: AddRecipeModalProps) {
     }
   };
 
+  const handleUrlUpload = async () => {
+    if (!recipeUrl.trim()) {
+      setError("Please enter a recipe URL");
+      return;
+    }
+
+    let normalizedUrl = recipeUrl.trim();
+    try {
+      const parsed = new URL(normalizedUrl);
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+        setError("URL must start with http:// or https://");
+        return;
+      }
+      normalizedUrl = parsed.toString();
+    } catch {
+      setError("Please enter a valid URL");
+      return;
+    }
+
+    setUploading(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const convexUrl = (import.meta as any).env.VITE_CONVEX_URL as string;
+      const siteUrl = convexUrl.replace(".convex.cloud", ".convex.site");
+      const uploadUrl = `${siteUrl}/upload-url`;
+
+      const response = await fetch(uploadUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ url: normalizedUrl }),
+      });
+
+      const result: UploadResponse = await response.json();
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "URL import failed");
+      }
+
+      setSuccess(
+        "Recipe URL submitted! HTML extraction and recipe analysis are processing now."
+      );
+      setRecipeUrl("");
+
+      await queryClient.invalidateQueries();
+
+      setTimeout(() => {
+        onOpenChange(false);
+        setSuccess(null);
+        setError(null);
+      }, 2000);
+    } catch (err) {
+      console.error("URL upload error:", err);
+      if (err instanceof Error) {
+        if (err.message.includes("fetch")) {
+          setError("Network error: Unable to reach server. Please check your connection.");
+        } else {
+          setError(err.message);
+        }
+      } else {
+        setError("URL import failed. Please try again.");
+      }
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const resetForm = () => {
     setSelectedFile(null);
+    setRecipeUrl("");
     setError(null);
     setSuccess(null);
     const fileInput = document.getElementById("recipe-file-input");
@@ -241,7 +313,7 @@ export function AddRecipeModal({ open, onOpenChange }: AddRecipeModalProps) {
               <FileImage className="h-4 w-4 mr-2" />
               Upload Image
             </TabsTrigger>
-            <TabsTrigger value="link" disabled>
+            <TabsTrigger value="link">
               <LinkIcon className="h-4 w-4 mr-2" />
               From URL
             </TabsTrigger>
@@ -360,11 +432,61 @@ export function AddRecipeModal({ open, onOpenChange }: AddRecipeModalProps) {
             </div>
           </TabsContent>
 
-          {/* Website Link Tab (Placeholder) */}
+          {/* Website Link Tab */}
           <TabsContent value="link" className="space-y-4 mt-4" keepMounted>
-            <div className="text-center text-muted-foreground py-12">
-              <LinkIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>URL import coming soon</p>
+            <div className="space-y-4">
+              <div className="rounded-md border bg-muted/40 p-3 text-sm text-muted-foreground">
+                For best results, use the <span className="font-medium text-foreground">printable version</span> of the recipe page URL.
+              </div>
+
+              <div className="space-y-2">
+                <label htmlFor="recipe-url-input" className="text-sm font-medium">
+                  Recipe URL
+                </label>
+                <Input
+                  id="recipe-url-input"
+                  type="url"
+                  placeholder="https://example.com/recipe?print="
+                  value={recipeUrl}
+                  onChange={(e) => {
+                    setRecipeUrl(e.target.value);
+                    setError(null);
+                    setSuccess(null);
+                  }}
+                  disabled={uploading}
+                />
+              </div>
+
+              {error && (
+                <div className="p-3 bg-destructive/10 border border-destructive/20 text-destructive rounded-md text-sm">
+                  {error}
+                </div>
+              )}
+
+              {success && (
+                <div className="p-3 bg-green-100 border border-green-400 text-green-700 rounded-md text-sm dark:bg-green-900/20 dark:border-green-900 dark:text-green-400">
+                  {success}
+                </div>
+              )}
+
+              <Button
+                onClick={handleUrlUpload}
+                disabled={!recipeUrl.trim() || uploading}
+                className="w-full"
+                size="lg"
+              >
+                {uploading ? (
+                  <>
+                    <LinkIcon className="h-4 w-4 mr-2 animate-pulse" />
+                    Extracting HTML & Analyzing...
+                  </>
+                ) : (
+                  <>
+                    <LinkIcon className="h-4 w-4 mr-2" />
+                    Import URL & Analyze Recipe
+                  </>
+                )}
+              </Button>
             </div>
           </TabsContent>
 

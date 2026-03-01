@@ -1,5 +1,5 @@
 import { httpRouter } from 'convex/server'
-import { handleUpload } from './uploads/actions'
+import { handleUpload, handleUrlUpload } from './uploads/actions'
 
 const http = httpRouter()
 
@@ -23,6 +23,25 @@ http.route({
   path: '/upload',
   method: 'OPTIONS',
   handler: handleUpload,
+})
+
+/**
+ * Recipe URL import endpoint
+ * POST /upload-url with JSON body: { url: "https://..." }
+ */
+http.route({
+  path: '/upload-url',
+  method: 'POST',
+  handler: handleUrlUpload,
+})
+
+/**
+ * CORS preflight handler for URL import endpoint
+ */
+http.route({
+  path: '/upload-url',
+  method: 'OPTIONS',
+  handler: handleUrlUpload,
 })
 
 export default http
