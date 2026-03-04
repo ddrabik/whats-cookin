@@ -174,12 +174,12 @@ export const remove = mutation({
 // Pure function for search matching — exported for unit testing
 export function matchesSearchQuery(
   recipe: { title: string; mealType: string; ingredients: Array<{ name: string }> },
-  query: string
+  searchQuery: string
 ): boolean {
-  if (query === "") {
+  if (searchQuery === "") {
     return true;
   }
-  const q = query.toLowerCase();
+  const q = searchQuery.toLowerCase();
   if (recipe.title.toLowerCase().includes(q)) {
     return true;
   }
@@ -234,7 +234,6 @@ export const listInternal = internalQuery({
 export const getInternal = internalQuery({
   args: { id: v.id("recipes") },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.id);
+    return await ctx.db.get("recipes", args.id);
   },
 });
-

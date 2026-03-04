@@ -1,14 +1,14 @@
 "use node";
 
 import OpenAI from "openai";
-import type {
-  ChatCompletionMessageParam,
-  ChatCompletionTool,
-} from "openai/resources/chat/completions";
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
 import { internalAction } from "./_generated/server";
 import { CHAT_SYSTEM_PROMPT, promptTag } from "./prompts";
+import type {
+  ChatCompletionMessageParam,
+  ChatCompletionTool,
+} from "openai/resources/chat/completions";
 
 const MAX_TOOL_CALL_ITERATIONS = 10;
 
@@ -49,7 +49,7 @@ export function parseToolArguments(argsStr: string): Record<string, unknown> {
 }
 
 // ---- Tool definitions ----
-const tools: ChatCompletionTool[] = [
+const tools: Array<ChatCompletionTool> = [
   {
     type: "function",
     function: {
@@ -115,7 +115,7 @@ export const respond = internalAction({
     });
 
     // 3. Convert to OpenAI format
-    const openaiMessages: ChatCompletionMessageParam[] = [
+    const openaiMessages: Array<ChatCompletionMessageParam> = [
       { role: "system", content: CHAT_SYSTEM_PROMPT.content },
       ...messages.map((m) =>
         convertToOpenAIMessage({

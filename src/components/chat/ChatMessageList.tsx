@@ -13,7 +13,7 @@ interface Message {
 }
 
 interface ChatMessageListProps {
-  messages: Message[];
+  messages: Array<Message>;
   isWaiting: boolean;
 }
 
