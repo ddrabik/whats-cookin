@@ -28,14 +28,14 @@ export const list = query({
 export const get = query({
   args: { id: v.id("threads") },
   handler: async (ctx, args) => {
-    return await ctx.db.get(args.id);
+    return await ctx.db.get("threads", args.id);
   },
 });
 
 export const touch = internalMutation({
   args: { threadId: v.id("threads") },
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.threadId, {
+    await ctx.db.patch("threads", args.threadId, {
       updatedAt: Date.now(),
     });
   },
@@ -47,7 +47,7 @@ export const setPromptVersion = internalMutation({
     promptVersion: v.string(),
   },
   handler: async (ctx, args) => {
-    await ctx.db.patch(args.threadId, {
+    await ctx.db.patch("threads", args.threadId, {
       promptVersion: args.promptVersion,
     });
   },

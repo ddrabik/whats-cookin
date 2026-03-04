@@ -6,6 +6,7 @@ import { v } from "convex/values";
 
 import { internal } from "../_generated/api";
 import { internalAction } from "../_generated/server";
+import { RECIPE_ANALYSIS_PROMPT, promptTag } from "../prompts";
 import {
   ERROR_CODES,
   MAX_TOKENS,
@@ -13,7 +14,6 @@ import {
   RECIPE_CONFIDENCE_THRESHOLD,
 } from "./constants";
 import type { ErrorCode } from "./constants";
-import { RECIPE_ANALYSIS_PROMPT, promptTag } from "../prompts";
 
 /**
  * Result structure from OpenAI analysis

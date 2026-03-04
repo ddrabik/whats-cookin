@@ -1,10 +1,10 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { useMutation } from "convex/react";
+import { ChefHat, Heart, MessageSquare, Search } from "lucide-react";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "~/components/ui/button";
 import { ChatInput } from "~/components/chat/ChatInput";
-import { MessageSquare, Search, Heart, ChefHat } from "lucide-react";
 
 export const Route = createFileRoute("/_chat/")({
   component: ChatEmptyState,

@@ -40,7 +40,7 @@ export const send = mutation({
     content: v.string(),
   },
   handler: async (ctx, args) => {
-    const thread = await ctx.db.get(args.threadId);
+    const thread = await ctx.db.get("threads", args.threadId);
     if (!thread) {
       throw new Error(`Thread ${args.threadId} not found`);
     }
