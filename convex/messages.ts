@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { internal } from "./_generated/api";
+import { requireClerkUserId } from "./auth";
 import {
   internalMutation,
   internalQuery,
@@ -10,6 +11,15 @@ import {
 export const list = query({
   args: { threadId: v.id("threads") },
   handler: async (ctx, args) => {
+    const userId = await requireClerkUserId(ctx);
+    const thread = await ctx.db.get("threads", args.threadId);
+    if (!thread) {
+      throw new Error("Thread not found");
+    }
+    if (thread.userId !== userId) {
+      throw new Error("Not authorized");
+    }
+
     return await ctx.db
       .query("messages")
       .withIndex("by_threadId_createdAt", (q) => q.eq("threadId", args.threadId))
@@ -40,9 +50,13 @@ export const send = mutation({
     content: v.string(),
   },
   handler: async (ctx, args) => {
+    const userId = await requireClerkUserId(ctx);
     const thread = await ctx.db.get("threads", args.threadId);
     if (!thread) {
       throw new Error(`Thread ${args.threadId} not found`);
+    }
+    if (thread.userId !== userId) {
+      throw new Error("Not authorized");
     }
 
     await ctx.db.insert("messages", {

@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
+import { useAuth } from "@clerk/tanstack-react-start";
 import { api } from "../../convex/_generated/api";
 
 export const Route = createFileRoute("/upload")({
@@ -21,6 +22,7 @@ interface UploadResponse {
 }
 
 function UploadPage() {
+  const { getToken } = useAuth();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,6 +53,11 @@ function UploadPage() {
     setSuccess(null);
 
     try {
+      const token = await getToken({ template: "convex" });
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
+
       // Get Convex site URL for HTTP actions
       // HTTP actions use .convex.site, not .convex.cloud (which is for WebSocket)
       const convexUrl = (import.meta as any).env.VITE_CONVEX_URL as string;
@@ -65,6 +72,9 @@ function UploadPage() {
       // Upload to Convex HTTP action
       const response = await fetch(uploadUrl, {
         method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
         body: formData,
       });
 

@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { internalQuery, mutation, query } from "./_generated/server";
+import { requireClerkUserId } from "./auth";
 
 // Query to list all recipes with optional filtering
 export const list = query({
@@ -17,26 +18,37 @@ export const list = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    // Fetch all recipes (or use an index for the most common filter)
-    const allRecipes = await ctx.db.query("recipes").collect();
-
-    // Apply filters in JavaScript
-    let filtered = allRecipes;
+    const userId = await requireClerkUserId(ctx);
+    const limit = args.limit;
 
     if (args.mealType) {
-      filtered = filtered.filter((recipe) => recipe.mealType === args.mealType);
+      const recipesQuery = ctx.db
+        .query("recipes")
+        .withIndex("by_userId_mealType_createdAt", (q) =>
+          q.eq("userId", userId).eq("mealType", args.mealType!)
+        )
+        .order("desc");
+
+      const recipes = limit ? await recipesQuery.take(limit) : await recipesQuery.collect();
+      return args.favoritesOnly ? recipes.filter((recipe) => recipe.isFavorite) : recipes;
     }
 
     if (args.favoritesOnly) {
-      filtered = filtered.filter((recipe) => recipe.isFavorite === true);
+      const recipesQuery = ctx.db
+        .query("recipes")
+        .withIndex("by_userId_isFavorite_createdAt", (q) =>
+          q.eq("userId", userId).eq("isFavorite", true)
+        )
+        .order("desc");
+
+      return limit ? recipesQuery.take(limit) : recipesQuery.collect();
     }
 
-    // Apply limit if specified
-    if (args.limit) {
-      return filtered.slice(0, args.limit);
-    }
-
-    return filtered;
+    const recipesQuery = ctx.db
+      .query("recipes")
+      .withIndex("by_userId_createdAt", (q) => q.eq("userId", userId))
+      .order("desc");
+    return limit ? recipesQuery.take(limit) : recipesQuery.collect();
   },
 });
 
@@ -44,7 +56,12 @@ export const list = query({
 export const get = query({
   args: { id: v.id("recipes") },
   handler: async (ctx, args) => {
-    return await ctx.db.get("recipes", args.id);
+    const userId = await requireClerkUserId(ctx);
+    const recipe = await ctx.db.get("recipes", args.id);
+    if (!recipe || recipe.userId !== userId) {
+      return null;
+    }
+    return recipe;
   },
 });
 
@@ -52,10 +69,11 @@ export const get = query({
 export const getRecent = query({
   args: { limit: v.optional(v.number()) },
   handler: async (ctx, args) => {
+    const userId = await requireClerkUserId(ctx);
     const limit = args.limit ?? 10;
     return await ctx.db
       .query("recipes")
-      .withIndex("by_createdAt")
+      .withIndex("by_userId_createdAt", (q) => q.eq("userId", userId))
       .order("desc")
       .take(limit);
   },
@@ -88,7 +106,9 @@ export const create = mutation({
     instructions: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
+    const userId = await requireClerkUserId(ctx);
     const recipeId = await ctx.db.insert("recipes", {
+      userId,
       title: args.title,
       mealType: args.mealType,
       cookTime: args.cookTime,
@@ -138,7 +158,15 @@ export const update = mutation({
     instructions: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
+    const userId = await requireClerkUserId(ctx);
     const { id, ...updates } = args;
+    const recipe = await ctx.db.get("recipes", id);
+    if (!recipe) {
+      throw new Error("Recipe not found");
+    }
+    if (recipe.userId !== userId) {
+      throw new Error("Not authorized");
+    }
 
     await ctx.db.patch("recipes", id, updates);
     return id;
@@ -149,9 +177,13 @@ export const update = mutation({
 export const toggleFavorite = mutation({
   args: { id: v.id("recipes") },
   handler: async (ctx, args) => {
+    const userId = await requireClerkUserId(ctx);
     const recipe = await ctx.db.get("recipes", args.id);
     if (!recipe) {
       throw new Error("Recipe not found");
+    }
+    if (recipe.userId !== userId) {
+      throw new Error("Not authorized");
     }
 
     await ctx.db.patch("recipes", args.id, {
@@ -166,6 +198,14 @@ export const toggleFavorite = mutation({
 export const remove = mutation({
   args: { id: v.id("recipes") },
   handler: async (ctx, args) => {
+    const userId = await requireClerkUserId(ctx);
+    const recipe = await ctx.db.get("recipes", args.id);
+    if (!recipe) {
+      throw new Error("Recipe not found");
+    }
+    if (recipe.userId !== userId) {
+      throw new Error("Not authorized");
+    }
     await ctx.db.delete("recipes", args.id);
     return args.id;
   },
@@ -195,10 +235,14 @@ export function matchesSearchQuery(
 // Internal query for chat action to search recipes by text
 export const searchInternal = internalQuery({
   args: {
+    userId: v.string(),
     query: v.string(),
   },
   handler: async (ctx, args) => {
-    const allRecipes = await ctx.db.query("recipes").collect();
+    const allRecipes = await ctx.db
+      .query("recipes")
+      .withIndex("by_userId_createdAt", (q) => q.eq("userId", args.userId))
+      .collect();
     return allRecipes.filter((recipe) => matchesSearchQuery(recipe, args.query));
   },
 });
@@ -206,6 +250,7 @@ export const searchInternal = internalQuery({
 // Internal query for chat action to list recipes with optional filters
 export const listInternal = internalQuery({
   args: {
+    userId: v.string(),
     mealType: v.optional(
       v.union(
         v.literal("breakfast"),
@@ -218,22 +263,35 @@ export const listInternal = internalQuery({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const allRecipes = await ctx.db.query("recipes").collect();
-    let filtered = allRecipes;
     if (args.mealType) {
-      filtered = filtered.filter((recipe) => recipe.mealType === args.mealType);
+      const byMealType = ctx.db
+        .query("recipes")
+        .withIndex("by_userId_mealType_createdAt", (q) =>
+          q.eq("userId", args.userId).eq("mealType", args.mealType!)
+        )
+        .order("desc");
+      return args.limit ? byMealType.take(args.limit) : byMealType.collect();
     }
-    if (args.limit) {
-      return filtered.slice(0, args.limit);
-    }
-    return filtered;
+
+    const byUser = ctx.db
+      .query("recipes")
+      .withIndex("by_userId_createdAt", (q) => q.eq("userId", args.userId))
+      .order("desc");
+    return args.limit ? byUser.take(args.limit) : byUser.collect();
   },
 });
 
 // Internal query for chat action to get a single recipe
 export const getInternal = internalQuery({
-  args: { id: v.id("recipes") },
+  args: {
+    userId: v.string(),
+    id: v.id("recipes"),
+  },
   handler: async (ctx, args) => {
-    return await ctx.db.get("recipes", args.id);
+    const recipe = await ctx.db.get("recipes", args.id);
+    if (!recipe || recipe.userId !== args.userId) {
+      return null;
+    }
+    return recipe;
   },
 });

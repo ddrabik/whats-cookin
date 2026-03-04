@@ -12,6 +12,7 @@ export default defineSchema({
 
   // Unauthenticated file uploads (temporary storage before auth is implemented)
   unauthenticatedUploads: defineTable({
+    userId: v.string(),
     // Storage ID reference to Convex's internal _storage table
     storageId: v.id("_storage"),
     // Original filename from client
@@ -27,12 +28,14 @@ export default defineSchema({
     // Optional: Original URL when importing recipes from a URL
     sourceUrl: v.optional(v.string()),
   })
+    .index("by_userId_uploadDate", ["userId", "uploadDate"])
     .index("by_storageId", ["storageId"])
     .index("by_uploadDate", ["uploadDate"])
     .index("by_contentType", ["contentType"]),
 
   // Recipes table
   recipes: defineTable({
+    userId: v.string(),
     // Basic recipe info
     title: v.string(),
     mealType: v.union(
@@ -71,13 +74,13 @@ export default defineSchema({
     // Cooking instructions (optional, step-by-step)
     instructions: v.optional(v.array(v.string())),
   })
-    .index("by_mealType", ["mealType"])
-    .index("by_createdAt", ["createdAt"])
-    .index("by_cookTimeMinutes", ["cookTimeMinutes"])
-    .index("by_isFavorite", ["isFavorite"]),
+    .index("by_userId_createdAt", ["userId", "createdAt"])
+    .index("by_userId_mealType_createdAt", ["userId", "mealType", "createdAt"])
+    .index("by_userId_isFavorite_createdAt", ["userId", "isFavorite", "createdAt"]),
 
   // Vision analysis results for uploaded files
   visionAnalysis: defineTable({
+    userId: v.string(),
     // Reference to the upload that was analyzed
     uploadId: v.id("unauthenticatedUploads"),
     // Reference to storage for direct access
@@ -132,16 +135,18 @@ export default defineSchema({
     updatedAt: v.number(),
     completedAt: v.optional(v.number()),
   })
-    .index("by_uploadId", ["uploadId"])
+    .index("by_userId_uploadId", ["userId", "uploadId"])
+    .index("by_userId_status", ["userId", "status"])
     .index("by_status", ["status"])
     .index("by_recipeId", ["recipeId"]),
 
   threads: defineTable({
+    userId: v.string(),
     title: v.string(),
     createdAt: v.number(),
     updatedAt: v.number(),
     promptVersion: v.optional(v.string()),
-  }).index("by_updatedAt", ["updatedAt"]),
+  }).index("by_userId_updatedAt", ["userId", "updatedAt"]),
 
   messages: defineTable({
     threadId: v.id("threads"),

@@ -10,12 +10,21 @@ import type { Id } from '../_generated/dataModel'
  */
 function getCorsHeaders(request: Request) {
   const origin = request.headers.get('origin') || ''
+  const allowlist = new Set<string>()
+  if (process.env.VITE_APP_URL) {
+    allowlist.add(process.env.VITE_APP_URL)
+  }
+  if (process.env.APP_URL) {
+    allowlist.add(process.env.APP_URL)
+  }
 
-  // Allow all localhost origins in development
-  const isLocalhost = origin.includes('localhost') || origin.includes('127.0.0.1')
+  const isLocalhost =
+    origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')
+  const isNetlifyPreview = origin.endsWith('.netlify.app') && origin.startsWith('https://')
+  const isAllowed = isLocalhost || isNetlifyPreview || allowlist.has(origin)
 
   return {
-    'Access-Control-Allow-Origin': isLocalhost ? origin : 'http://localhost:3000',
+    'Access-Control-Allow-Origin': isAllowed ? origin : 'http://localhost:3006',
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Max-Age': '86400', // 24 hours
@@ -38,6 +47,14 @@ export const handleUpload = httpAction(async (ctx, request) => {
     return new Response(null, {
       status: 204,
       headers: corsHeaders,
+    })
+  }
+
+  const identity = await ctx.auth.getUserIdentity()
+  if (!identity) {
+    return new Response(JSON.stringify({ error: 'Not authenticated' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders },
     })
   }
 

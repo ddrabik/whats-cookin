@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation } from "../_generated/server";
+import { requireClerkUserId } from "../auth";
 
 /**
  * Saves file metadata after successful storage
@@ -15,7 +16,9 @@ export const saveFileMetadata = mutation({
     sourceUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const userId = await requireClerkUserId(ctx);
     const uploadId = await ctx.db.insert("unauthenticatedUploads", {
+      userId,
       storageId: args.storageId,
       filename: args.filename,
       size: args.size,
@@ -37,9 +40,13 @@ export const deleteUpload = mutation({
     uploadId: v.id("unauthenticatedUploads"),
   },
   handler: async (ctx, args) => {
+    const userId = await requireClerkUserId(ctx);
     const upload = await ctx.db.get("unauthenticatedUploads", args.uploadId);
     if (!upload) {
       throw new Error("Upload not found");
+    }
+    if (upload.userId !== userId) {
+      throw new Error("Not authorized");
     }
 
     // Delete from storage

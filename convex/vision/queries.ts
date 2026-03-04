@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { query } from "../_generated/server";
+import { requireClerkUserId } from "../auth";
 
 /**
  * Gets the vision analysis for a specific upload
@@ -10,9 +11,12 @@ export const getAnalysisByUploadId = query({
     uploadId: v.id("unauthenticatedUploads"),
   },
   handler: async (ctx, args) => {
+    const userId = await requireClerkUserId(ctx);
     return await ctx.db
       .query("visionAnalysis")
-      .withIndex("by_uploadId", (q) => q.eq("uploadId", args.uploadId))
+      .withIndex("by_userId_uploadId", (q) =>
+        q.eq("userId", userId).eq("uploadId", args.uploadId)
+      )
       .first();
   },
 });
@@ -25,7 +29,12 @@ export const getAnalysis = query({
     analysisId: v.id("visionAnalysis"),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.get("visionAnalysis", args.analysisId);
+    const userId = await requireClerkUserId(ctx);
+    const analysis = await ctx.db.get("visionAnalysis", args.analysisId);
+    if (!analysis || analysis.userId !== userId) {
+      return null;
+    }
+    return analysis;
   },
 });
 
@@ -43,11 +52,14 @@ export const listAnalysesByStatus = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const userId = await requireClerkUserId(ctx);
     const limit = args.limit ?? 50;
 
     return await ctx.db
       .query("visionAnalysis")
-      .withIndex("by_status", (q) => q.eq("status", args.status))
+      .withIndex("by_userId_status", (q) =>
+        q.eq("userId", userId).eq("status", args.status)
+      )
       .order("desc")
       .take(limit);
   },
@@ -62,14 +74,17 @@ export const getUploadWithAnalysis = query({
     uploadId: v.id("unauthenticatedUploads"),
   },
   handler: async (ctx, args) => {
+    const userId = await requireClerkUserId(ctx);
     const upload = await ctx.db.get("unauthenticatedUploads", args.uploadId);
-    if (!upload) {
+    if (!upload || upload.userId !== userId) {
       return null;
     }
 
     const analysis = await ctx.db
       .query("visionAnalysis")
-      .withIndex("by_uploadId", (q) => q.eq("uploadId", args.uploadId))
+      .withIndex("by_userId_uploadId", (q) =>
+        q.eq("userId", userId).eq("uploadId", args.uploadId)
+      )
       .first();
 
     // Get storage URL for the upload
@@ -92,14 +107,17 @@ export const getUploadWithAnalysis = query({
 export const getPendingRecipes = query({
   args: {},
   handler: async (ctx) => {
-    // Get all pending and processing analyses
+    const userId = await requireClerkUserId(ctx);
     const pendingAnalyses = await ctx.db
       .query("visionAnalysis")
-      .filter((q) =>
-        q.or(
-          q.eq(q.field("status"), "pending"),
-          q.eq(q.field("status"), "processing")
-        )
+      .withIndex("by_userId_status", (q) => q.eq("userId", userId).eq("status", "pending"))
+      .order("desc")
+      .collect();
+
+    const processingAnalyses = await ctx.db
+      .query("visionAnalysis")
+      .withIndex("by_userId_status", (q) =>
+        q.eq("userId", userId).eq("status", "processing")
       )
       .order("desc")
       .collect();
@@ -107,12 +125,14 @@ export const getPendingRecipes = query({
     // Get completed analyses that don't have a recipe yet
     const completedWithoutRecipe = await ctx.db
       .query("visionAnalysis")
-      .withIndex("by_status", (q) => q.eq("status", "completed"))
+      .withIndex("by_userId_status", (q) =>
+        q.eq("userId", userId).eq("status", "completed")
+      )
       .filter((q) => q.eq(q.field("recipeId"), undefined))
       .order("desc")
       .take(10);
 
-    const allPending = [...pendingAnalyses, ...completedWithoutRecipe];
+    const allPending = [...pendingAnalyses, ...processingAnalyses, ...completedWithoutRecipe];
 
     // Fetch upload details and storage URLs for each
     const pendingWithDetails = await Promise.all(
@@ -148,11 +168,14 @@ export const getRecentFailedImports = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const userId = await requireClerkUserId(ctx);
     const limit = args.limit ?? 10;
 
     const failedAnalyses = await ctx.db
       .query("visionAnalysis")
-      .withIndex("by_status", (q) => q.eq("status", "failed"))
+      .withIndex("by_userId_status", (q) =>
+        q.eq("userId", userId).eq("status", "failed")
+      )
       .order("desc")
       .take(limit);
 
