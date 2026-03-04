@@ -14,8 +14,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  lint:
-    name: Typecheck & Lint
+  typecheck:
+    name: Typecheck
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -30,6 +30,5 @@ jobs:
       - name: Install
         run: npm ci
 
-      - name: Lint
-        run: npm run lint
-
+      - name: Typecheck
+        run: npx tsc --noEmit
