@@ -50,6 +50,7 @@
     "convex-test": "^0.0.41",
     "eslint": "^9.39.2",
     "prettier": "^3.6.2",
+    "rollup": "^4.59.0",
     "tailwindcss": "^4.1.13",
     "typescript": "^5.9.2",
     "vite": "^7.1.5",
