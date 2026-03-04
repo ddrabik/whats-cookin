@@ -24,3 +24,14 @@ Important: only add advice, leassons, and learnings that can apply across many p
 ### Performance
 
 **Avoid full table scans** — When planning queries, never use `.collect()` followed by JS filtering when an index can narrow the result set first. Plans that introduce new queries or filters should specify which index to use (or add one). Full table scans hide behind innocent-looking code (`db.query("table").collect()`) but degrade linearly with table size. Always prefer `.withIndex()` with `.filter()` or `.take(n)` over scan-and-filter in application code.
+
+## Definition of Done
+
+A feature is complete when:
+
+1. The specified behavior works correctly across all described scenarios
+2. Edge cases identified in the specification are handled
+3. A corresponding unit test exists and passes (`npm test -- --run`)
+4. No linting errors are introduced (`npm run lint`)
+5. No type errors are introduced (`npx tsc --noEmit`)
+6. The feature works correctly at desktop and mobile viewport widths
