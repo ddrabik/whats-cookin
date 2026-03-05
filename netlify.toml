@@ -2,4 +2,4 @@
   command = "npm run build"
 
 [[plugins]]
-  package = "@netlify/plugin-tanstack-start"
+  package = "@netlify/plugin-tanstack-start@latest"
