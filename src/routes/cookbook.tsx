@@ -23,7 +23,6 @@ import {
   Sun,
   Sunrise,
   Trash2,
-  User,
   X,
 } from "lucide-react";
 
@@ -622,10 +621,6 @@ function CookbookPage() {
                         {selectedRecipe.cookTime}
                       </span>
                       <span className="flex items-center gap-1 text-muted-foreground">
-                        <User className="h-4 w-4" />
-                        {selectedRecipe.author || selectedRecipe.source}
-                      </span>
-                      <span className="flex items-center gap-1 text-muted-foreground">
                         <Calendar className="h-4 w-4" />
                         Added {formatDate(selectedRecipe.createdAt)}
                       </span>
@@ -754,13 +749,7 @@ function SearchMatchContext({
 
   const bestMatch = titleMatch || ingredientMatch || categoryMatch;
 
-  if (!bestMatch?.indices) {
-    return (
-      <p className="text-xs text-muted-foreground">
-        {recipe.author || recipe.source}
-      </p>
-    );
-  }
+  if (!bestMatch?.indices) return null;
 
   if (bestMatch.key === 'title') {
     return (
@@ -788,11 +777,7 @@ function SearchMatchContext({
     );
   }
 
-  return (
-    <p className="text-xs text-muted-foreground">
-      {recipe.author || recipe.source}
-    </p>
-  );
+  return null;
 }
 
 function RecipeTableRow({
@@ -828,11 +813,7 @@ function RecipeTableRow({
           <p className="font-medium">{recipe.title}</p>
           {searchQuery && searchMatches ? (
             <SearchMatchContext recipe={recipe} matches={searchMatches} />
-          ) : (
-            <p className="text-xs text-muted-foreground">
-              {recipe.author || recipe.source}
-            </p>
-          )}
+          ) : null}
         </div>
       </TableCell>
       <TableCell>

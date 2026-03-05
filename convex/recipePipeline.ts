@@ -292,7 +292,6 @@ async function buildRecipeFromAnalysis(
     cookTime: recipeData.cookTime ?? "Unknown",
     cookTimeMinutes,
     isFavorite: false,
-    source: "Vision Analysis",
     imageUrl,
     createdAt: Date.now(),
     ingredients,

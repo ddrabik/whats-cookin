@@ -173,7 +173,7 @@ export function AddRecipeModal({ open, onOpenChange }: AddRecipeModalProps) {
       }
 
       setSuccess(
-        `Recipe image uploaded! Vision analysis is processing and will appear in your cookbook shortly.`
+        "Recipe image uploaded and is being processed. It will appear in your cookbook shortly."
       );
       setSelectedFile(null);
 
