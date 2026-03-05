@@ -8,7 +8,12 @@ export const Route = createFileRoute('/sign-up/$')({
 function SignUpPage() {
   return (
     <main className="min-h-screen flex items-center justify-center p-4 bg-muted/20">
-      <SignUp forceRedirectUrl="/" />
+      <SignUp
+        routing="path"
+        path="/sign-up"
+        signInUrl="/sign-in"
+        forceRedirectUrl="/"
+      />
     </main>
   )
 }

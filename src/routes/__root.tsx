@@ -29,10 +29,7 @@ export const Route = createRootRouteWithContext<{
     const isAuthRoute = location.pathname.startsWith('/sign-in') || location.pathname.startsWith('/sign-up')
     if (!userId && !isAuthRoute) {
       throw redirect({
-        to: '/sign-in/$',
-        params: {
-          _splat: '',
-        },
+        href: '/sign-in',
       })
     }
   },
