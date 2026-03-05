@@ -124,13 +124,9 @@ export const processCompletedAnalysis = internalMutation({
     analysisId: v.id("visionAnalysis"),
   },
   handler: async (ctx, args) => {
-    const userId = await requireClerkUserId(ctx);
     const analysis = await ctx.db.get("visionAnalysis", args.analysisId);
     if (!analysis) {
       throw new Error("Analysis not found");
-    }
-    if (analysis.userId !== userId) {
-      throw new Error("Not authorized");
     }
 
     // Skip if already processed
@@ -212,9 +208,13 @@ export const manuallyCreateRecipe = mutation({
     ),
   },
   handler: async (ctx, args) => {
+    const userId = await requireClerkUserId(ctx);
     const analysis = await ctx.db.get("visionAnalysis", args.analysisId);
     if (!analysis) {
       throw new Error("Analysis not found");
+    }
+    if (analysis.userId !== userId) {
+      throw new Error("Not authorized");
     }
 
     // Check if already processed

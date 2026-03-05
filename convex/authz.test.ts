@@ -57,3 +57,139 @@ describe("Thread/message authorization", () => {
     ).rejects.toThrow("Not authorized");
   });
 });
+
+describe("Recipe pipeline authorization", () => {
+  test("unauthenticated manuallyCreateRecipe is rejected", async () => {
+    const owner = convexTest(schema, modules).withIdentity({ subject: "user_a" });
+    const unauthenticated = convexTest(schema, modules);
+
+    const analysisId = await owner.run(async (ctx) => {
+      const storageId = await ctx.storage.store(new Blob(["a"], { type: "image/jpeg" }));
+      const uploadId = await ctx.db.insert("unauthenticatedUploads", {
+        userId: "user_a",
+        storageId,
+        filename: "a.jpg",
+        size: 100,
+        contentType: "image/jpeg",
+        uploadDate: Date.now(),
+      });
+
+      const now = Date.now();
+      return ctx.db.insert("visionAnalysis", {
+        userId: "user_a",
+        uploadId,
+        storageId,
+        status: "completed",
+        analysisResult: {
+          rawText: "test",
+          description: "test",
+          confidence: 0.9,
+          contentType: "recipe",
+          recipeData: {
+            title: "Owner Recipe",
+            ingredients: ["1 cup rice"],
+            instructions: ["Cook rice"],
+            cookTime: "20 min",
+          },
+        },
+        retryCount: 0,
+        maxRetries: 3,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    await expect(
+      unauthenticated.mutation(api.recipePipeline.manuallyCreateRecipe, { analysisId })
+    ).rejects.toThrow("Not authenticated");
+  });
+
+  test("cross-user manuallyCreateRecipe is rejected", async () => {
+    const owner = convexTest(schema, modules).withIdentity({ subject: "user_a" });
+    const otherUser = convexTest(schema, modules).withIdentity({ subject: "user_b" });
+
+    const analysisId = await owner.run(async (ctx) => {
+      const storageId = await ctx.storage.store(new Blob(["a"], { type: "image/jpeg" }));
+      const uploadId = await ctx.db.insert("unauthenticatedUploads", {
+        userId: "user_a",
+        storageId,
+        filename: "a.jpg",
+        size: 100,
+        contentType: "image/jpeg",
+        uploadDate: Date.now(),
+      });
+
+      const now = Date.now();
+      return ctx.db.insert("visionAnalysis", {
+        userId: "user_a",
+        uploadId,
+        storageId,
+        status: "completed",
+        analysisResult: {
+          rawText: "test",
+          description: "test",
+          confidence: 0.9,
+          contentType: "recipe",
+          recipeData: {
+            title: "Owner Recipe",
+            ingredients: ["1 cup rice"],
+            instructions: ["Cook rice"],
+            cookTime: "20 min",
+          },
+        },
+        retryCount: 0,
+        maxRetries: 3,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    await expect(
+      otherUser.mutation(api.recipePipeline.manuallyCreateRecipe, { analysisId })
+    ).rejects.toThrow("Not authorized");
+  });
+
+  test("owner can manuallyCreateRecipe successfully", async () => {
+    const owner = convexTest(schema, modules).withIdentity({ subject: "user_a" });
+
+    const analysisId = await owner.run(async (ctx) => {
+      const storageId = await ctx.storage.store(new Blob(["a"], { type: "image/jpeg" }));
+      const uploadId = await ctx.db.insert("unauthenticatedUploads", {
+        userId: "user_a",
+        storageId,
+        filename: "a.jpg",
+        size: 100,
+        contentType: "image/jpeg",
+        uploadDate: Date.now(),
+      });
+
+      const now = Date.now();
+      return ctx.db.insert("visionAnalysis", {
+        userId: "user_a",
+        uploadId,
+        storageId,
+        status: "completed",
+        analysisResult: {
+          rawText: "test",
+          description: "test",
+          confidence: 0.9,
+          contentType: "recipe",
+          recipeData: {
+            title: "Owner Recipe",
+            ingredients: ["1 cup rice"],
+            instructions: ["Cook rice"],
+            cookTime: "20 min",
+          },
+        },
+        retryCount: 0,
+        maxRetries: 3,
+        createdAt: now,
+        updatedAt: now,
+      });
+    });
+
+    const result = await owner.mutation(api.recipePipeline.manuallyCreateRecipe, { analysisId });
+    expect(result.success).toBe(true);
+    expect(result.recipeId).toBeDefined();
+  });
+});

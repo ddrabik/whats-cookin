@@ -3,32 +3,60 @@ import { api } from '../_generated/api'
 import { validateFileSignature, validateFileUpload } from './validation'
 import type { Id } from '../_generated/dataModel'
 
+const LOCALHOST_FALLBACK_ORIGIN = 'http://localhost:3006'
+
+function parseCsvOrigins(csv?: string): Array<string> {
+  if (!csv) {
+    return []
+  }
+  return csv
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0)
+}
+
+export function getAllowedOriginsFromEnv(env: NodeJS.ProcessEnv = process.env): Set<string> {
+  const allowlist = new Set<string>()
+  for (const key of ['VITE_APP_URL', 'APP_URL']) {
+    const value = env[key]
+    if (value) {
+      allowlist.add(value)
+    }
+  }
+  for (const origin of parseCsvOrigins(env.CORS_ALLOWED_ORIGINS)) {
+    allowlist.add(origin)
+  }
+  return allowlist
+}
+
 /**
  * Get CORS headers for the request
  * In development, allows all localhost origins
  * In production, should be restricted to specific domains
  */
-function getCorsHeaders(request: Request) {
+export function getCorsHeaders(request: Request, env: NodeJS.ProcessEnv = process.env) {
   const origin = request.headers.get('origin') || ''
-  const allowlist = new Set<string>()
-  if (process.env.VITE_APP_URL) {
-    allowlist.add(process.env.VITE_APP_URL)
-  }
-  if (process.env.APP_URL) {
-    allowlist.add(process.env.APP_URL)
-  }
+  const allowlist = getAllowedOriginsFromEnv(env)
+  const isDevelopment = env.NODE_ENV !== 'production'
 
   const isLocalhost =
     origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')
-  const isNetlifyPreview = origin.endsWith('.netlify.app') && origin.startsWith('https://')
-  const isAllowed = isLocalhost || isNetlifyPreview || allowlist.has(origin)
+  const isAllowed = allowlist.has(origin) || (isDevelopment && isLocalhost)
+  const allowOrigin =
+    isAllowed ? origin : allowlist.values().next().value ?? LOCALHOST_FALLBACK_ORIGIN
 
   return {
-    'Access-Control-Allow-Origin': isAllowed ? origin : 'http://localhost:3006',
+    'Access-Control-Allow-Origin': allowOrigin,
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Max-Age': '86400', // 24 hours
     'Vary': 'origin',
+  }
+}
+
+export function buildInternalUploadErrorBody() {
+  return {
+    error: 'Internal server error during upload',
   }
 }
 
@@ -152,10 +180,7 @@ export const handleUpload = httpAction(async (ctx, request) => {
   } catch (error) {
     console.error('Upload failed:', error)
     return new Response(
-      JSON.stringify({
-        error: 'Internal server error during upload',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      }),
+      JSON.stringify(buildInternalUploadErrorBody()),
       { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
     )
   }
