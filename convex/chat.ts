@@ -103,6 +103,13 @@ export const respond = internalAction({
   args: { threadId: v.id("threads") },
   handler: async (ctx, args) => {
     try {
+    const thread = await ctx.runQuery(internal.threads.getInternal, {
+      threadId: args.threadId,
+    });
+    if (!thread) {
+      throw new Error("Thread not found");
+    }
+
     // 1. Record which prompt version is being used
     await ctx.runMutation(internal.threads.setPromptVersion, {
       threadId: args.threadId,
@@ -187,7 +194,7 @@ export const respond = internalAction({
           let result: string;
           try {
             const toolArgs = parseToolArguments(toolCall.function.arguments);
-            result = await executeTool(ctx, toolCall.function.name, toolArgs);
+            result = await executeTool(ctx, thread.userId, toolCall.function.name, toolArgs);
           } catch (error) {
             result = JSON.stringify({
               error: `Failed to execute tool: ${error instanceof Error ? error.message : "Unknown error"}`,
@@ -237,6 +244,7 @@ export const respond = internalAction({
 // ---- Tool execution ----
 async function executeTool(
   ctx: any,
+  userId: string,
   name: string,
   args: Record<string, unknown>
 ): Promise<string> {
@@ -244,6 +252,7 @@ async function executeTool(
     case "search_recipes": {
       const query = typeof args.query === "string" ? args.query : "";
       const results = await ctx.runQuery(internal.recipes.searchInternal, {
+        userId,
         query,
       });
       return JSON.stringify(results);
@@ -256,6 +265,7 @@ async function executeTool(
           ? args.limit
           : undefined;
       const results = await ctx.runQuery(internal.recipes.listInternal, {
+        userId,
         mealType,
         limit,
       });
@@ -266,6 +276,7 @@ async function executeTool(
         return JSON.stringify({ error: "Missing required field: id" });
       }
       const result = await ctx.runQuery(internal.recipes.getInternal, {
+        userId,
         id: args.id,
       });
       return JSON.stringify(result ?? { error: "Recipe not found" });

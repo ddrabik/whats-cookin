@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { query } from "../_generated/server";
+import { requireClerkUserId } from "../auth";
 
 /**
  * Lists all uploads with optional pagination
@@ -10,14 +11,14 @@ export const listUploads = query({
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    const userId = await requireClerkUserId(ctx);
     const limit = args.limit ?? 50;
 
-    const uploads = await ctx.db
+    return await ctx.db
       .query("unauthenticatedUploads")
+      .withIndex("by_userId_uploadDate", (q) => q.eq("userId", userId))
       .order("desc")
       .take(limit);
-
-    return uploads;
   },
 });
 
@@ -29,7 +30,12 @@ export const getUpload = query({
     uploadId: v.id("unauthenticatedUploads"),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.get("unauthenticatedUploads", args.uploadId);
+    const userId = await requireClerkUserId(ctx);
+    const upload = await ctx.db.get("unauthenticatedUploads", args.uploadId);
+    if (!upload || upload.userId !== userId) {
+      return null;
+    }
+    return upload;
   },
 });
 
@@ -42,9 +48,11 @@ export const getUploadByStorageId = query({
     storageId: v.id("_storage"),
   },
   handler: async (ctx, args) => {
+    const userId = await requireClerkUserId(ctx);
     return await ctx.db
       .query("unauthenticatedUploads")
       .withIndex("by_storageId", (q) => q.eq("storageId", args.storageId))
+      .filter((q) => q.eq(q.field("userId"), userId))
       .first();
   },
 });

@@ -1,17 +1,21 @@
 import { useSuspenseQuery } from "@tanstack/react-query";
 import { convexQuery } from "@convex-dev/react-query";
 import { useNavigate, useParams } from "@tanstack/react-router";
-import { BookOpen, Menu, Plus, X } from "lucide-react";
+import { UserButton, useClerk } from "@clerk/tanstack-react-start";
+import { BookOpen, Menu, Plus, Trash2, X } from "lucide-react";
 import { useState } from "react";
+import { useMutation } from "convex/react";
 import { api } from "../../../convex/_generated/api";
 import { Button } from "~/components/ui/button";
 import { Dialog, DialogContent } from "~/components/ui/dialog";
 import { formatRelativeTime } from "~/lib/utils";
 
 function SidebarContent({ onClose }: { onClose?: () => void }) {
+  const { signOut } = useClerk();
   const navigate = useNavigate();
   const params = useParams({ strict: false });
   const activeThreadId = (params as { threadId?: string }).threadId;
+  const deleteMyData = useMutation(api.account.deleteMyData);
 
   const { data: threads = [] } = useSuspenseQuery(
     convexQuery(api.threads.list, { limit: 10 })
@@ -72,6 +76,25 @@ function SidebarContent({ onClose }: { onClose?: () => void }) {
           <BookOpen className="h-4 w-4" />
           Cookbook
         </Button>
+        <Button
+          variant="ghost"
+          className="w-full justify-start gap-2 text-destructive hover:text-destructive mt-2"
+          onClick={async () => {
+            const confirmed = window.confirm(
+              "Delete all your data? This cannot be undone."
+            );
+            if (!confirmed) return;
+            await deleteMyData({});
+            await signOut({ redirectUrl: "/sign-in" });
+            onClose?.();
+          }}
+        >
+          <Trash2 className="h-4 w-4" />
+          Delete my data
+        </Button>
+        <div className="mt-3 flex justify-start">
+          <UserButton />
+        </div>
       </div>
     </div>
   );

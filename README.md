@@ -63,13 +63,23 @@ A modern recipe management application with AI-powered recipe extraction from im
    - Go to Settings → Environment Variables
    - Add `OPENAI_API_KEY` with your API key
 
-6. Start the development server:
+6. Configure upload CORS allowlist in Convex:
+   - In Convex Dashboard → Settings → Environment Variables, set:
+     - `APP_URL=http://localhost:3006`
+     - Optional extras in `CORS_ALLOWED_ORIGINS` (comma-separated)
+   - For local development, `NODE_ENV` defaults to non-production and localhost origins are allowed.
+
+7. Start the development server:
 
    ```bash
    npm run dev
    ```
 
    Open [http://localhost:3006](http://localhost:3006) in your browser.
+
+## Deployment Configuration
+
+Deployment environment setup (local, Netlify + Convex previews, production) is documented in [docs/deploy.md](./docs/deploy.md).
 
 ## Scripts
 

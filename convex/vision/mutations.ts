@@ -2,6 +2,7 @@ import { v } from "convex/values";
 
 import { internal } from "../_generated/api";
 import { internalMutation, mutation } from "../_generated/server";
+import { requireClerkUserId } from "../auth";
 import { MAX_RETRIES, RETRY_DELAYS } from "./constants";
 
 /**
@@ -13,16 +14,22 @@ export const triggerAnalysis = mutation({
     uploadId: v.id("unauthenticatedUploads"),
   },
   handler: async (ctx, args) => {
+    const userId = await requireClerkUserId(ctx);
     // Get upload metadata
     const upload = await ctx.db.get("unauthenticatedUploads", args.uploadId);
     if (!upload) {
       throw new Error("Upload not found");
     }
+    if (upload.userId !== userId) {
+      throw new Error("Not authorized");
+    }
 
     // Check if analysis already exists for this upload
     const existing = await ctx.db
       .query("visionAnalysis")
-      .withIndex("by_uploadId", (q) => q.eq("uploadId", args.uploadId))
+      .withIndex("by_userId_uploadId", (q) =>
+        q.eq("userId", userId).eq("uploadId", args.uploadId)
+      )
       .first();
 
     if (existing) {
@@ -33,6 +40,7 @@ export const triggerAnalysis = mutation({
     // Create pending analysis record
     const now = Date.now();
     const analysisId = await ctx.db.insert("visionAnalysis", {
+      userId,
       uploadId: args.uploadId,
       storageId: upload.storageId,
       status: "pending",

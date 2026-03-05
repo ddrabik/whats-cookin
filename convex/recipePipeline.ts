@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { internalMutation, mutation } from "./_generated/server";
+import { requireClerkUserId } from "./auth";
 import type { Id } from "./_generated/dataModel";
 
 /**
@@ -207,9 +208,13 @@ export const manuallyCreateRecipe = mutation({
     ),
   },
   handler: async (ctx, args) => {
+    const userId = await requireClerkUserId(ctx);
     const analysis = await ctx.db.get("visionAnalysis", args.analysisId);
     if (!analysis) {
       throw new Error("Analysis not found");
+    }
+    if (analysis.userId !== userId) {
+      throw new Error("Not authorized");
     }
 
     // Check if already processed
@@ -281,12 +286,12 @@ async function buildRecipeFromAnalysis(
 
   // Create the recipe
   const recipeId = await ctx.db.insert("recipes", {
+    userId: analysis.userId,
     title: overrides?.title ?? recipeData.title ?? "Untitled Recipe",
     mealType,
     cookTime: recipeData.cookTime ?? "Unknown",
     cookTimeMinutes,
     isFavorite: false,
-    source: "Vision Analysis",
     imageUrl,
     createdAt: Date.now(),
     ingredients,

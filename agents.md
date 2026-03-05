@@ -35,3 +35,11 @@ A feature is complete when:
 4. No linting errors are introduced (`npm run lint`)
 5. No type errors are introduced (`npx tsc --noEmit`)
 6. The feature works correctly at desktop and mobile viewport widths
+
+## Auth Guardrails
+
+- **Default-deny routing** — Treat new routes as authenticated by default and explicitly mark public exceptions.
+- **Server-side enforcement first** — Every data read/write path must verify authentication and ownership server-side; never rely on client filtering.
+- **Index for tenancy** — Multi-tenant tables should include a tenant/user key and indexes starting with that key to prevent cross-tenant scans.
+- **Propagate auth to non-ORM calls** — Any direct HTTP calls (uploads, webhooks, custom endpoints) must include and validate auth tokens explicitly.
+- **Auth regression tests** — For each auth-sensitive function, add tests for unauthenticated rejection and cross-user/tenant denial.

@@ -3,23 +3,65 @@ import { api } from '../_generated/api'
 import { validateFileSignature, validateFileUpload } from './validation'
 import type { Id } from '../_generated/dataModel'
 
+const LOCALHOST_FALLBACK_ORIGIN = 'http://localhost:3006'
+
+function parseCsvOrigins(csv?: string): Array<string> {
+  if (!csv) {
+    return []
+  }
+  return csv
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter((origin) => origin.length > 0)
+}
+
+export function getAllowedOriginsFromEnv(env: NodeJS.ProcessEnv = process.env): Set<string> {
+  const allowlist = new Set<string>()
+  for (const key of ['VITE_APP_URL', 'APP_URL']) {
+    const value = env[key]
+    if (value) {
+      allowlist.add(value)
+    }
+  }
+  for (const origin of parseCsvOrigins(env.CORS_ALLOWED_ORIGINS)) {
+    allowlist.add(origin)
+  }
+  return allowlist
+}
+
 /**
  * Get CORS headers for the request
  * In development, allows all localhost origins
  * In production, should be restricted to specific domains
  */
-function getCorsHeaders(request: Request) {
+export function getCorsHeaders(request: Request, env: NodeJS.ProcessEnv = process.env) {
   const origin = request.headers.get('origin') || ''
+  const allowlist = getAllowedOriginsFromEnv(env)
+  const isDevelopment = env.NODE_ENV !== 'production'
 
-  // Allow all localhost origins in development
-  const isLocalhost = origin.includes('localhost') || origin.includes('127.0.0.1')
+  const isLocalhost =
+    origin.startsWith('http://localhost:') || origin.startsWith('http://127.0.0.1:')
+  const isAllowed = allowlist.has(origin) || (isDevelopment && isLocalhost)
+  const allowOrigin =
+    isAllowed ? origin : allowlist.values().next().value ?? LOCALHOST_FALLBACK_ORIGIN
+  if (!isAllowed && env.NODE_ENV === 'production' && allowlist.size === 0) {
+    console.warn(
+      `Upload CORS allowlist is empty in production; using fallback origin ${LOCALHOST_FALLBACK_ORIGIN}. Requested origin: ${origin || '<none>'}`,
+    )
+  }
 
   return {
-    'Access-Control-Allow-Origin': isLocalhost ? origin : 'http://localhost:3000',
+    'Access-Control-Allow-Origin': allowOrigin,
     'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Max-Age': '86400', // 24 hours
     'Vary': 'origin',
+  }
+}
+
+export function buildInternalUploadErrorBody() {
+  return {
+    error: 'Internal server error during upload',
   }
 }
 
@@ -38,6 +80,14 @@ export const handleUpload = httpAction(async (ctx, request) => {
     return new Response(null, {
       status: 204,
       headers: corsHeaders,
+    })
+  }
+
+  const identity = await ctx.auth.getUserIdentity()
+  if (!identity) {
+    return new Response(JSON.stringify({ error: 'Not authenticated' }), {
+      status: 401,
+      headers: { 'Content-Type': 'application/json', ...corsHeaders },
     })
   }
 
@@ -135,10 +185,7 @@ export const handleUpload = httpAction(async (ctx, request) => {
   } catch (error) {
     console.error('Upload failed:', error)
     return new Response(
-      JSON.stringify({
-        error: 'Internal server error during upload',
-        message: error instanceof Error ? error.message : 'Unknown error',
-      }),
+      JSON.stringify(buildInternalUploadErrorBody()),
       { status: 500, headers: { 'Content-Type': 'application/json', ...corsHeaders } },
     )
   }

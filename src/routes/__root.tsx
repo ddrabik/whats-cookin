@@ -3,14 +3,39 @@ import {
   Outlet,
   Scripts,
   createRootRouteWithContext,
+  redirect,
 } from '@tanstack/react-router'
+import { createServerFn } from '@tanstack/react-start'
+import { ClerkProvider, useAuth } from '@clerk/tanstack-react-start'
+import { auth } from '@clerk/tanstack-react-start/server'
+import { ConvexProviderWithClerk } from 'convex/react-clerk'
 import * as React from 'react'
 import type { QueryClient } from '@tanstack/react-query'
+import type { ConvexQueryClient } from '@convex-dev/react-query'
+import type { ConvexReactClient } from 'convex/react'
 import appCss from '~/styles/app.css?url'
 
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient
+  convexQueryClient: ConvexQueryClient
+  convexClient: ConvexReactClient
 }>()({
+  beforeLoad: async ({ context, location }) => {
+    const { userId, token } = await getServerAuth()
+    if (token) {
+      context.convexQueryClient.serverHttpClient?.setAuth(token)
+    }
+
+    const isAuthRoute = location.pathname.startsWith('/sign-in') || location.pathname.startsWith('/sign-up')
+    if (!userId && !isAuthRoute) {
+      throw redirect({
+        to: '/sign-in/$',
+        params: {
+          _splat: '',
+        },
+      })
+    }
+  },
   head: () => ({
     meta: [
       {
@@ -52,9 +77,12 @@ export const Route = createRootRouteWithContext<{
 })
 
 function RootComponent() {
+  const context = Route.useRouteContext()
   return (
     <RootDocument>
-      <Outlet />
+      <ClerkProvider>
+        <AuthReadyShell convexClient={context.convexClient} />
+      </ClerkProvider>
     </RootDocument>
   )
 }
@@ -70,5 +98,31 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <Scripts />
       </body>
     </html>
+  )
+}
+
+const getServerAuth = createServerFn({ method: 'GET' }).handler(async () => {
+  const serverAuth = await auth()
+  const token = await serverAuth.getToken({ template: 'convex' })
+  return {
+    userId: serverAuth.userId,
+    token,
+  }
+})
+
+function AuthReadyShell({ convexClient }: { convexClient: ConvexReactClient }) {
+  const { isLoaded } = useAuth()
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen flex items-center justify-center text-sm text-muted-foreground">
+        Loading...
+      </div>
+    )
+  }
+
+  return (
+    <ConvexProviderWithClerk client={convexClient} useAuth={useAuth}>
+      <Outlet />
+    </ConvexProviderWithClerk>
   )
 }

@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@clerk/tanstack-react-start";
 import { FileImage, Link as LinkIcon, PenSquare, Upload, X } from "lucide-react";
 import { Button } from "~/components/ui/button";
 import {
@@ -76,6 +77,7 @@ function validateFile(file: File): { valid: boolean; error?: string } {
 }
 
 export function AddRecipeModal({ open, onOpenChange }: AddRecipeModalProps) {
+  const { getToken } = useAuth();
   const queryClient = useQueryClient();
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploading, setUploading] = useState(false);
@@ -140,6 +142,11 @@ export function AddRecipeModal({ open, onOpenChange }: AddRecipeModalProps) {
     setSuccess(null);
 
     try {
+      const token = await getToken({ template: "convex" });
+      if (!token) {
+        throw new Error("Not authenticated");
+      }
+
       // Get Convex site URL for HTTP actions
       const convexUrl = (import.meta as any).env.VITE_CONVEX_URL as string;
       const siteUrl = convexUrl.replace(".convex.cloud", ".convex.site");
@@ -153,6 +160,9 @@ export function AddRecipeModal({ open, onOpenChange }: AddRecipeModalProps) {
       // Upload to Convex HTTP action
       const response = await fetch(uploadUrl, {
         method: "POST",
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
         body: formData,
       });
 
@@ -163,7 +173,7 @@ export function AddRecipeModal({ open, onOpenChange }: AddRecipeModalProps) {
       }
 
       setSuccess(
-        `Recipe image uploaded! Vision analysis is processing and will appear in your cookbook shortly.`
+        "Recipe image uploaded and is being processed. It will appear in your cookbook shortly."
       );
       setSelectedFile(null);
 

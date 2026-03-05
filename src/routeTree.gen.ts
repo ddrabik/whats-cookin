@@ -13,6 +13,8 @@ import { Route as UploadRouteImport } from './routes/upload'
 import { Route as CookbookRouteImport } from './routes/cookbook'
 import { Route as ChatRouteImport } from './routes/_chat'
 import { Route as ChatIndexRouteImport } from './routes/_chat/index'
+import { Route as SignUpSplatRouteImport } from './routes/sign-up.$'
+import { Route as SignInSplatRouteImport } from './routes/sign-in.$'
 import { Route as ChatChatThreadIdRouteImport } from './routes/_chat/chat.$threadId'
 
 const UploadRoute = UploadRouteImport.update({
@@ -34,6 +36,16 @@ const ChatIndexRoute = ChatIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ChatRoute,
 } as any)
+const SignUpSplatRoute = SignUpSplatRouteImport.update({
+  id: '/sign-up/$',
+  path: '/sign-up/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SignInSplatRoute = SignInSplatRouteImport.update({
+  id: '/sign-in/$',
+  path: '/sign-in/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ChatChatThreadIdRoute = ChatChatThreadIdRouteImport.update({
   id: '/chat/$threadId',
   path: '/chat/$threadId',
@@ -41,14 +53,18 @@ const ChatChatThreadIdRoute = ChatChatThreadIdRouteImport.update({
 } as any)
 
 export interface FileRoutesByFullPath {
+  '/': typeof ChatIndexRoute
   '/cookbook': typeof CookbookRoute
   '/upload': typeof UploadRoute
-  '/': typeof ChatIndexRoute
+  '/sign-in/$': typeof SignInSplatRoute
+  '/sign-up/$': typeof SignUpSplatRoute
   '/chat/$threadId': typeof ChatChatThreadIdRoute
 }
 export interface FileRoutesByTo {
   '/cookbook': typeof CookbookRoute
   '/upload': typeof UploadRoute
+  '/sign-in/$': typeof SignInSplatRoute
+  '/sign-up/$': typeof SignUpSplatRoute
   '/': typeof ChatIndexRoute
   '/chat/$threadId': typeof ChatChatThreadIdRoute
 }
@@ -57,19 +73,35 @@ export interface FileRoutesById {
   '/_chat': typeof ChatRouteWithChildren
   '/cookbook': typeof CookbookRoute
   '/upload': typeof UploadRoute
+  '/sign-in/$': typeof SignInSplatRoute
+  '/sign-up/$': typeof SignUpSplatRoute
   '/_chat/': typeof ChatIndexRoute
   '/_chat/chat/$threadId': typeof ChatChatThreadIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/cookbook' | '/upload' | '/' | '/chat/$threadId'
+  fullPaths:
+    | '/'
+    | '/cookbook'
+    | '/upload'
+    | '/sign-in/$'
+    | '/sign-up/$'
+    | '/chat/$threadId'
   fileRoutesByTo: FileRoutesByTo
-  to: '/cookbook' | '/upload' | '/' | '/chat/$threadId'
+  to:
+    | '/cookbook'
+    | '/upload'
+    | '/sign-in/$'
+    | '/sign-up/$'
+    | '/'
+    | '/chat/$threadId'
   id:
     | '__root__'
     | '/_chat'
     | '/cookbook'
     | '/upload'
+    | '/sign-in/$'
+    | '/sign-up/$'
     | '/_chat/'
     | '/_chat/chat/$threadId'
   fileRoutesById: FileRoutesById
@@ -78,6 +110,8 @@ export interface RootRouteChildren {
   ChatRoute: typeof ChatRouteWithChildren
   CookbookRoute: typeof CookbookRoute
   UploadRoute: typeof UploadRoute
+  SignInSplatRoute: typeof SignInSplatRoute
+  SignUpSplatRoute: typeof SignUpSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -99,7 +133,7 @@ declare module '@tanstack/react-router' {
     '/_chat': {
       id: '/_chat'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof ChatRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -109,6 +143,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof ChatIndexRouteImport
       parentRoute: typeof ChatRoute
+    }
+    '/sign-up/$': {
+      id: '/sign-up/$'
+      path: '/sign-up/$'
+      fullPath: '/sign-up/$'
+      preLoaderRoute: typeof SignUpSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sign-in/$': {
+      id: '/sign-in/$'
+      path: '/sign-in/$'
+      fullPath: '/sign-in/$'
+      preLoaderRoute: typeof SignInSplatRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/_chat/chat/$threadId': {
       id: '/_chat/chat/$threadId'
@@ -136,16 +184,19 @@ const rootRouteChildren: RootRouteChildren = {
   ChatRoute: ChatRouteWithChildren,
   CookbookRoute: CookbookRoute,
   UploadRoute: UploadRoute,
+  SignInSplatRoute: SignInSplatRoute,
+  SignUpSplatRoute: SignUpSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
+import type { startInstance } from './start.ts'
 declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
     router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }
