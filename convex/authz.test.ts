@@ -7,13 +7,14 @@ const modules = import.meta.glob("./**/*.ts");
 
 describe("Recipe authorization", () => {
   test("unauthenticated recipe list is rejected", async () => {
-    const t = convexTest(schema, modules);
-    await expect(t.query(api.recipes.list, {})).rejects.toThrow("Not authenticated");
+    const harness = convexTest(schema, modules);
+    await expect(harness.query(api.recipes.list, {})).rejects.toThrow("Not authenticated");
   });
 
   test("recipes are scoped per user", async () => {
-    const userA = convexTest(schema, modules).withIdentity({ subject: "user_a" });
-    const userB = convexTest(schema, modules).withIdentity({ subject: "user_b" });
+    const harness = convexTest(schema, modules);
+    const userA = harness.withIdentity({ subject: "user_a" });
+    const userB = harness.withIdentity({ subject: "user_b" });
 
     await userA.mutation(api.recipes.create, {
       title: "A Recipe",
@@ -44,8 +45,9 @@ describe("Recipe authorization", () => {
 
 describe("Thread/message authorization", () => {
   test("cross-user send is denied", async () => {
-    const userA = convexTest(schema, modules).withIdentity({ subject: "user_a" });
-    const userB = convexTest(schema, modules).withIdentity({ subject: "user_b" });
+    const harness = convexTest(schema, modules);
+    const userA = harness.withIdentity({ subject: "user_a" });
+    const userB = harness.withIdentity({ subject: "user_b" });
 
     const threadId = await userA.mutation(api.threads.create, { title: "A thread" });
 
@@ -60,8 +62,9 @@ describe("Thread/message authorization", () => {
 
 describe("Recipe pipeline authorization", () => {
   test("unauthenticated manuallyCreateRecipe is rejected", async () => {
-    const owner = convexTest(schema, modules).withIdentity({ subject: "user_a" });
-    const unauthenticated = convexTest(schema, modules);
+    const harness = convexTest(schema, modules);
+    const owner = harness.withIdentity({ subject: "user_a" });
+    const unauthenticated = harness;
 
     const analysisId = await owner.run(async (ctx) => {
       const storageId = await ctx.storage.store(new Blob(["a"], { type: "image/jpeg" }));
@@ -105,8 +108,9 @@ describe("Recipe pipeline authorization", () => {
   });
 
   test("cross-user manuallyCreateRecipe is rejected", async () => {
-    const owner = convexTest(schema, modules).withIdentity({ subject: "user_a" });
-    const otherUser = convexTest(schema, modules).withIdentity({ subject: "user_b" });
+    const harness = convexTest(schema, modules);
+    const owner = harness.withIdentity({ subject: "user_a" });
+    const otherUser = harness.withIdentity({ subject: "user_b" });
 
     const analysisId = await owner.run(async (ctx) => {
       const storageId = await ctx.storage.store(new Blob(["a"], { type: "image/jpeg" }));
@@ -150,7 +154,8 @@ describe("Recipe pipeline authorization", () => {
   });
 
   test("owner can manuallyCreateRecipe successfully", async () => {
-    const owner = convexTest(schema, modules).withIdentity({ subject: "user_a" });
+    const harness = convexTest(schema, modules);
+    const owner = harness.withIdentity({ subject: "user_a" });
 
     const analysisId = await owner.run(async (ctx) => {
       const storageId = await ctx.storage.store(new Blob(["a"], { type: "image/jpeg" }));
