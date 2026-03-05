@@ -64,8 +64,9 @@ describe("Upload authorization", () => {
   });
 
   test("user cannot read another user's upload", async () => {
-    const userA = convexTest(schema, modules).withIdentity({ subject: "user_a" });
-    const userB = convexTest(schema, modules).withIdentity({ subject: "user_b" });
+    const harness = convexTest(schema, modules);
+    const userA = harness.withIdentity({ subject: "user_a" });
+    const userB = harness.withIdentity({ subject: "user_b" });
 
     const storageId = await userA.run(async (ctx) =>
       ctx.storage.store(new Blob(["a"], { type: "image/jpeg" }))
@@ -83,8 +84,9 @@ describe("Upload authorization", () => {
   });
 
   test("listUploads returns only current user's uploads", async () => {
-    const userA = convexTest(schema, modules).withIdentity({ subject: "user_a" });
-    const userB = convexTest(schema, modules).withIdentity({ subject: "user_b" });
+    const harness = convexTest(schema, modules);
+    const userA = harness.withIdentity({ subject: "user_a" });
+    const userB = harness.withIdentity({ subject: "user_b" });
 
     const storageA = await userA.run(async (ctx) =>
       ctx.storage.store(new Blob(["a"], { type: "image/jpeg" }))
