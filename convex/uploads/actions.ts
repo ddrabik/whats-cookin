@@ -44,6 +44,11 @@ export function getCorsHeaders(request: Request, env: NodeJS.ProcessEnv = proces
   const isAllowed = allowlist.has(origin) || (isDevelopment && isLocalhost)
   const allowOrigin =
     isAllowed ? origin : allowlist.values().next().value ?? LOCALHOST_FALLBACK_ORIGIN
+  if (!isAllowed && env.NODE_ENV === 'production' && allowlist.size === 0) {
+    console.warn(
+      `Upload CORS allowlist is empty in production; using fallback origin ${LOCALHOST_FALLBACK_ORIGIN}. Requested origin: ${origin || '<none>'}`,
+    )
+  }
 
   return {
     'Access-Control-Allow-Origin': allowOrigin,

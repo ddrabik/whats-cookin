@@ -1,4 +1,4 @@
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 import { buildInternalUploadErrorBody, getCorsHeaders } from "./uploads/actions";
 
 function buildRequest(origin: string): Request {
@@ -39,6 +39,19 @@ describe("Upload CORS headers", () => {
 
     expect(devHeaders["Access-Control-Allow-Origin"]).toBe("http://localhost:5173");
     expect(prodHeaders["Access-Control-Allow-Origin"]).toBe("https://app.example.com");
+  });
+
+  test("warns in production when allowlist is empty and fallback origin is used", () => {
+    const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => undefined);
+
+    const headers = getCorsHeaders(buildRequest("https://unknown.example.com"), {
+      NODE_ENV: "production",
+    });
+
+    expect(headers["Access-Control-Allow-Origin"]).toBe("http://localhost:3006");
+    expect(warnSpy).toHaveBeenCalledTimes(1);
+    expect(warnSpy.mock.calls[0]?.[0]).toContain("Upload CORS allowlist is empty in production");
+    warnSpy.mockRestore();
   });
 });
 
