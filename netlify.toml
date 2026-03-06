@@ -1,2 +1,2 @@
 [[plugins]]
-  package = "@netlify/plugin-tanstack-start@latest"
+  package = "@netlify/plugin-tanstack-start"
