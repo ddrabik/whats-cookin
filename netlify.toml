@@ -1,2 +1,2 @@
-[[plugins]]
-  package = "@netlify/plugin-tanstack-start"
+# Netlify configuration is managed in the Netlify UI.
+# The TanStack Start integration now uses the Vite plugin in vite.config.ts.
